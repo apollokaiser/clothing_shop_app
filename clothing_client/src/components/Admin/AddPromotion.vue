@@ -303,6 +303,7 @@ onBeforeMount(() => {
   });
 });
 const getPromotion = (data) => {
+  console.log(data);
   promotion.ngayBatDau = getDate(data[0]);
   promotion.ngayKetThuc = getDate(data[1]);
   promotion.phanTramGiam = data[2] == "" ? 0 : Number(data[2]);
@@ -311,9 +312,13 @@ const getPromotion = (data) => {
   promotion.soLuongToiThieu = data[5] == "" ? 0 : Number(data[5]);
   promotion.giaTriToiThieu = data[6] == "" ? 0 : Number(data[6]);
 };
+//FIXED: đã sửa định dạng ngày tháng ngày tháng và trường hợp ngày tháng = 0;
 const getDate = (date) => {
+  if(date==0) return 0; 
   let data = date.split("/");
-  return `${data[2]}-0${data[1]}-0${data[0]}`;
+  let month = data[1] >=10 ? data[1] : `0${data[1]}`;
+  let day = data[0] >=10 ? data[0] : `0${data[0]}`;
+  return `${data[2]}-${month}-${day}`;
 };
 const status = reactive({
   addPromotionSuccess: false,
@@ -328,7 +333,7 @@ const convertToHTML = (event) => {
     docx2html(file,{
       container:document.querySelector(".trash")
     }).then((html) => {
-      const root = parse(html.toString());
+      let root = parse(html.toString());
       let table = root.querySelector("table").clone();
       let data = table
         .querySelectorAll("tbody tr:last-child td")
@@ -347,6 +352,7 @@ const convertToHTML = (event) => {
 const removeAllCategory = () => {
   admin.resetCategory();
 };
+//FIXME: xem lại thêm khuyến mãi khi hết access token có trả về promotion_id không
 const savePromotion = () => {
   let savePromotion = toRaw(promotion);
   savePromotion.ngayBatDau =
@@ -354,8 +360,8 @@ const savePromotion = () => {
   savePromotion.ngayKetThuc =
     new Date(savePromotion.ngayKetThuc).getTime() / 1000;
   addPromotion(savePromotion, categoryPromotion.value).then((result) => {
-    if (result !=false) {
-      htmlContent.value = "";
+    htmlContent.value = "";
+    if (result && result !=false) {
       status.addPromotionSuccess = true;
       promotion.maKhuyenMai = result;
       resource.pushPromotion(toRaw(promotion));

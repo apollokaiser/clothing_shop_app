@@ -1,13 +1,13 @@
 import { defineStore, storeToRefs } from "pinia";
-import { computed, reactive, ref, watch } from "vue";
+import { computed, reactive, ref } from "vue";
 import { getPromotionCategory, getPromotionPayment } from "@/data.function/getData";
 import { useCartStore } from "./cart.store";
 export const usePromotionStore = defineStore("promotion", () => {
+    const cart = useCartStore();
+    const { cartItems, cartDetail, totalPrice, cartCount } = storeToRefs(cart)
     const promotion = ref([]);
     const paymentPromotion = ref([]);
-    const cart = useCartStore();
     const myPaymentPromotion = ref("");
-    const { cartItems, cartDetail, totalPrice, cartCount } = storeToRefs(cart)
     const promotionCode = reactive({
         code: "",
         promotion: "",
@@ -18,22 +18,25 @@ export const usePromotionStore = defineStore("promotion", () => {
     const myPromotion = computed(() => {
         if (promotion.value && promotion.value.length > 0) {
             if (cartDetail.value && cartDetail.value.length > 0) {
-                let category = cartDetail.value.map(cat => cat.theLoai);
-                return promotion.value.filter(item => category.includes(item.maLoai));
+                let category = cartDetail.value.map(cat => cat.theLoai); // danh sách các thể loại của sản phẩm trong cart
+                return promotion.value.filter(item => {
+                    if(category.some(cat => item.theLoais.includes(cat))) return true;
+                    return false;
+                });
             }
         }
         return 0;
     })
     const checkPromotion = (catID) => {
         if (!catID || !promotion.value.length) return 0;
-        return promotion.value.find(item => item.maLoai === catID);
+        return promotion.value.find(item => item.theLoais.includes(catID));
     }
     const totalDiscount = computed(() => {
         let discount = 0;
         let cartPromotion = cartItems.value.filter(cartItem => cartItem.promotion != null && cartItem.check == true)
         cartPromotion.forEach(element => {
-            let thisPro = myPromotion.value?.find(p => p.khuyenMai.maKhuyenMai == element.promotion).khuyenMai;
-            discount += thisPro.giamTien + (1 - thisPro.phanTramGiam /100) * cartDetail.value.find(cart => cart.id == element.id).giaTien * element.quantity;
+            let thisPro = myPromotion.value?.find(p => p.maKhuyenMai == element.promotion);
+            discount += thisPro.giamTien + (thisPro.phanTramGiam /100) * cartDetail.value.find(cart => cart.id == element.id).giaTien * element.quantity;
         })
         if (promotionCode.check) {
             let value = promotionCode.promotion.donVi == "PERCENT" ? (promotionCode.promotion.giaTriGiam / 100) * (totalPrice.value - discount) : promotionCode.promotion.giaTriGiam;
@@ -57,13 +60,12 @@ export const usePromotionStore = defineStore("promotion", () => {
                                 }
                             })
             myPaymentPromotion.value = max.item;
-            discount += max.price > max.item.giamToiDa ? max.item.giamToiDa :max.price;
+            discount += max.price > max.item.giamToiDa ? max.item.giamToiDa : max.price;
             } else {
                 myPaymentPromotion.value = null;
             }
-            
         }
-        return discount.toFixed(0);
+        return discount;
     })
 
     //NOTE: gọi sao khi load applicationStater để lấy dữ liệu về promotion

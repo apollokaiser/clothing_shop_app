@@ -291,6 +291,7 @@ svg:hover {
 <script setup>
 import router from "@/router";
 import { authStore } from "@/stores/user.store";
+import { convertToSlug } from "@/utils/util.function";
 import { storeToRefs } from "pinia";
 import { computed, reactive } from "vue";
 const auth = authStore();
@@ -365,6 +366,6 @@ const changeUserInfo = () =>{
     }
 }
 const addressInfo = ()=>{
-  router.push({name:"address"});
+  router.push({name:"address", params:{username:convertToSlug(user.value.name)}});
 }
 </script>

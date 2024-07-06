@@ -6,13 +6,13 @@ import { authStore } from "./user.store";
 export const useCartStore = defineStore("cart", () => {
     const auth = authStore();
     const { isLoggedIn, user } = storeToRefs(auth);
-    const cartItems = ref([]) // lưu thông tin tất cả 
-    const cartDetail = ref(null)
-    var updateTimer = null;
+    const cartItems = ref([])
+    const cartDetail = ref([])
+    let updateTimer = null;
     const deleteCartItems = ref([])
     const insertCartItems = ref([])
     const totalPrice = computed(() => {
-        if (cartItems.value.length > 0 && cartDetail.value?.length > 0) {
+        if (cartItems.value.length > 0 && cartDetail.value.length > 0) {
             let total = 0;
             cartItems.value.forEach((item) => {
                 if (item.check) {
@@ -31,8 +31,9 @@ export const useCartStore = defineStore("cart", () => {
         }
         return 0;
     })
+    //UPDATED: Fix lỗi khi remove cart item thì watch được gọi dẫn đến cart item được gán = response, vốn dĩ watch này chỉ được gọi khi mới load trang 
     watch(() => user.value.gioHangs, (value) => {
-        if (value && user.value.gioHangs > 0) {
+        if (value && user.value.gioHangs > 0 && cartItems.value.length == 0) {
             getCart(user.value.uid).then((response) => {
                 if (response) {
                     response.cart_items.forEach(element => {
@@ -79,28 +80,26 @@ export const useCartStore = defineStore("cart", () => {
     }, {
         deep: true
     })
-    const addCart = (cartItem, auto_increasement = false) => {
+    const addCart = (cartItem, detail = null, auto_increasement = false) => {
         const index = cartItems.value.findIndex(item => item.id === cartItem.id && item.size == cartItem.size);
-        const cart = new Cart(cartItem.id, cartItem.quantity, cartItem.size, cartItem.full)
+        const cart = new Cart(cartItem.id, cartItem.quantity, cartItem.size, cartItem.full, cartItem.check, cartItem.promotion)
         if (index != -1) {
             if (auto_increasement)
                 cartItems.value.at(index).quantity = cartItem.quantity;
             else
-                cartItems.value.at(index).quantity += cartItem.quantity;
-        } else {
+            cartItems.value.at(index).quantity += cartItem.quantity;
+    } else {
             cartItems.value.push(cart);
+            cartDetail.value.push(detail);
             user.value.gioHangs++;
-            //add mới thì tăng số lượng --. khi load lại thì load cả theo cái 
         }
         if (isLoggedIn.value) {
             insertCartItems.value.push(cart)
         }
-        // nếu có login --> tạo insertCart
         localStorage.setItem('CART_', JSON.stringify({ cart: cartItems.value, state: isLoggedIn.value }))
     }
     //NOTE: hàm này chỉ được dùng khi thay đổi size
     /**
-     * 
      * @param {Array} cartItem trang phục muốn thay đổi size
      * @param {String} size kích cỡ muốn thay đổi
      */
@@ -115,12 +114,13 @@ export const useCartStore = defineStore("cart", () => {
         // }
         localStorage.setItem('CART_', JSON.stringify(cartItems.value))
     }
-    const removeCart = (outfitId, size) => {
+    const removeCart = (outfitId, size, full) => {
         const index = cartItems.value.findIndex(item => item.id === outfitId && item.size == size);
         if (index != -1) {
-            user.value.gioHangs--;
-            if (isLoggedIn.value)
+            if (isLoggedIn.value){
+                user.value.gioHangs--;
                 deleteCartItems.value.push(cartItems.value.at(index));
+            }
             cartItems.value.splice(index, 1);
         }
         localStorage.setItem('CART_', JSON.stringify(cartItems.value))
@@ -157,7 +157,6 @@ export const useCartStore = defineStore("cart", () => {
     }
     const clearCart = () => {
         deleteCartItems.value = cartItems.value.filter(item => item.check);
-        console.log(deleteCartItems.value);
         user.value.gioHangs = 0;
         cartItems.value = cartItems.value.filter(item => !item.check) || [];
         if (cartItems.value.length == 0)
@@ -167,12 +166,13 @@ export const useCartStore = defineStore("cart", () => {
 })
 
 class Cart {
-    constructor(outfitId, quantity, outfitSize, full, check = true, promotion = null) {
+    constructor(outfitId, quantity, outfitSize, full, check = true, promotion = null, discount = 0) {
         this.id = outfitId
         this.quantity = quantity
         this.size = outfitSize
         this.full = full
         this.check = check
         this.promotion = promotion
+        this.discount = discount
     }
 }

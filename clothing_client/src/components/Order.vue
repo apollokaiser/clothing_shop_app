@@ -24,12 +24,22 @@ const orderAddress = reactive({
   ward: "",
 })
 const chooseAddress = ref("");
+const validAddress = computed(()=>{
+  if(user.value.address.length > 0 && isLoggedIn.value) {
+    let thisAddress = user.value.address.filter(address => ACCEPT_PROVINCES.includes(address.detail.provinceId));
+    if (thisAddress.length > 0) {
+      let defautAddress = thisAddress.find(item=>item.isDefault);
+      return defautAddress ? defautAddress: thisAddress.at(0);
+    } else 
+    return false;
+  }
+  return false;
+})
 onBeforeMount(() => {
   if (isLoggedIn.value) {
-    let defaultAddress = user.value.address.find(item => item.isDefault)
-    if (user.value.address.length > 0 && defaultAddress) {
-      order.value.diaChiNguoiNhan = defaultAddress.diaChi;
-      chooseAddress.value = defaultAddress.id;
+    if (validAddress.value !=false) {
+      order.value.diaChiNguoiNhan = validAddress.value.diaChiNguoiNhan;
+      chooseAddress.value = validAddress.value.diaChi;
       order.value.tenNguoiNhan = user.value.name;
       order.value.sdtNguoiNhan = user.value.phone || "";
     }
@@ -39,7 +49,6 @@ onBeforeMount(() => {
     order.value.diaChiNguoiNhan = address.value;
   }
   getProvinces().then(res => {
-    console.log(res);
     city.province = res.filter(item => ACCEPT_PROVINCES.includes(item.province_id));
   })
 })
@@ -115,14 +124,16 @@ watch(()=> orderAddress.address, value =>{
                 </div>
               </div>
               <div class="input-box address">
-                <div v-if="user.address.length > 0" class="select-box">
+                <div v-if="user.address.length > 0 && validAddress !=false" class="select-box">
                   <select v-model="chooseAddress">
                     <option hidden="">Chọn địa chỉ của bạn</option>
                     <option :checked="item.isDefault" v-for="item in user.address" :key="item.id" :value="item.id">{{
                       item.tenDiaChi }}</option>
                     <option value="0">Khác ...</option>
                   </select>
+                  <!--TODO: làm thêm trang để biết các tỉnh nào hợp lệ-->
                 </div>
+                  <div><em v-if="!validAddress" style="color:red">Địa chỉ của bạn không thuộc giới hạn chúng tôi Vui lòng chọn lại ! Tìm hiểu</em></div>
                 <label>Địa chỉ người nhận</label>
                 <div v-if="chooseAddress != 0" class="my-address">{{ order.diaChiNguoiNhan }}</div>
                 <div v-if="chooseAddress == 0">
@@ -164,7 +175,7 @@ watch(()=> orderAddress.address, value =>{
                   <span>{{total}}</span>
                 </div>
               </div>
-              <Link :to="{name:'payment', uid:'1', slug:'thanh-toan-thue-trang-phuc'}">
+              <Link :to="{name:'payment', params:{uid:'1', slug:'thanh-toan-thue-trang-phuc'} }">
               <button data-bs-dismiss="modal">Thuê ngay</button>
               </Link>
               <button class="close" data-bs-dismiss="modal">Xem lại đã !</button>

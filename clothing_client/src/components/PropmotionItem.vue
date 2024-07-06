@@ -6,8 +6,8 @@ import { storeToRefs } from 'pinia';
 import { computed } from 'vue';
 const khuyenMai = usePromotionStore()
 const cart = useCartStore()
-const {myPaymentPromotion, myPromotion, totalDiscount} = storeToRefs(khuyenMai)
-const {cartItems, cartDetail, totalPrice, cartCount} = storeToRefs(cart)
+const {myPaymentPromotion, totalDiscount} = storeToRefs(khuyenMai)
+const {totalPrice, cartCount} = storeToRefs(cart)
 const processing  = computed(()=>{
     if(props.category) {
         return false;

@@ -43,6 +43,7 @@ export const authStore = defineStore("authStore", () => {
                 isNew: false
             };
             localStorage.removeItem("refreshToken");
+            localStorage.removeItem("CART_")
         } else {
             localStorage.setItem("refreshToken", value);
         }
@@ -65,7 +66,7 @@ export const authStore = defineStore("authStore", () => {
         } else return false;
     }
     const isAdmin = computed(() => {
-        if (user.value.uid !=null && user.value.uid!="")  {
+        if (user.value.uid != null && user.value.uid != "") {
             return user.value.scope.includes(ROLES.ADMIN)
         }
         return false;
@@ -78,7 +79,6 @@ export const authStore = defineStore("authStore", () => {
             user.value.email = claims.sub;
             user.value.name = claims.name || "Chưa cập nhật";
             user.value.scope = claims.scope.split(" ");
-            console.log(user.value.scope);
             isLoggedIn.value = true;
         }
         else { //access token is not valid or expired
@@ -86,7 +86,7 @@ export const authStore = defineStore("authStore", () => {
         }
     }
     const getUserInfo = async () => {
-        if(!user.value.uid) return;
+        if (!user.value.uid) return;
         const response = await getInfo(user.value.uid);
         if (response && response.status === 200) {
             user.value.phone = response.data.user_info.sdt || "Không có";

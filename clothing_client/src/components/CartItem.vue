@@ -24,12 +24,10 @@ const thisPromotion = ref("");
 onBeforeMount(() => {
     thisCartItem.value = props.item
 })
-
 const quantityHandle = {
     add: () => {
         if (thisCartItem.value.quantity < thisCartDetail.value.soLuong) {
             thisCartItem.value.quantity++;
-            cart.addCart(thisCartItem.value, true)
         } else {
             alert("Số lượng trang phục không đủ !")
             thisCartItem.value.quantity = thisCartDetail.value.soLuong;
@@ -39,7 +37,6 @@ const quantityHandle = {
     reduce: () => {
         if (thisCartItem.value.quantity > 1) {
             thisCartItem.value.quantity--;
-            cart.addCart(thisCartItem.value, true);
         } else {
             thisCartItem.value.quantity = 1;
         }
@@ -48,7 +45,7 @@ const quantityHandle = {
 watch(promotion, (value) => {
     let myPromotion = khuyenMai.checkPromotion(thisCartDetail.value.theLoai);
     if (myPromotion) {
-        thisPromotion.value = myPromotion.khuyenMai;
+        thisPromotion.value = myPromotion;
     }
 }, {
     deep: true,
@@ -117,17 +114,12 @@ watch(() => thisCartItem.value.size, (value, oldValue) => {
 )
 watch(() => thisCartItem.value.quantity, (value, oldValue) => {
     if (oldValue) {
-        cart.addCart(thisCartItem.value, true);
+        cart.addCart(thisCartItem.value, null, true);
     }
 }
 )
-// watch(
-//     ()=>thisCartItem.value.check,
-//     (value)=>{
-//     cart.checkCart(thisCartItem.value)
-// })
 const removeCartItem = () => {
-    cart.removeCart(thisCartItem.value.id, thisCartItem.value.size);
+    cart.removeCart(thisCartItem.value.id, thisCartItem.value.size, thisCartItem.value.full);
 }
 const hasSize = computed(() => thisCartDetail.value.kichThuocs.length > 0)
 const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.value.size + "-" + thisCartItem.value.full)
@@ -320,6 +312,9 @@ const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.va
     flex-direction: column;
     align-items: flex-end;
     justify-content: space-between;
+}
+.cart-item-action i {
+    cursor: pointer;
 }
 
 .cbx {

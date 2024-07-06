@@ -91,19 +91,22 @@ const auth = authStore();
 const cart = useCartStore();
 const khuyenMai = usePromotionStore();
 const donThue = useOrderStore();
-const { user } = storeToRefs(auth);
+const { user, isLoggedIn } = storeToRefs(auth);
 const { order } = storeToRefs(donThue);
 const { cartItems, totalPrice, cartDetail } = storeToRefs(cart);
 const {totalDiscount} = storeToRefs(khuyenMai);
 const router = useRouter();
 
 const paymentHandle = ()=>{
-    console.log(user.value.uid);
-    let orderUser  = user.value.uid == null ? null: user.value
+    let orderUser  = isLoggedIn.value ? user.value : null;
     saveOrder(cartItems.value,cartDetail.value, order.value, orderUser).then(response=>{
         if(response.status==200){
             cart.clearCart();
-            router.push({name:'order_success'});
+            router.push({name:'order_success', params:{
+                uid: isLoggedIn.value ? user.value.uid : new Date().toString(), 
+                slug:"thanh-toan-thue-trang-phuc"
+            }
+            });
         } else {
             alert('Đặt hàng thất bại');
         }

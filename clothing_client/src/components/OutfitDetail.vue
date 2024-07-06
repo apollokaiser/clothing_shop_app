@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onBeforeMount, onMounted, reactive, ref, toRaw, watch } from "vue";
+import { computed, onBeforeMount, reactive, ref, toRaw, watch } from "vue";
 import { getOutFitDetail } from "@/data.function/getData";
 import convertToVND from "@/utils/convertVND";
 import { sortSizes } from "@/utils/util.function";
@@ -81,8 +81,9 @@ watch(
 watch(
     () => outfitDisplay.display,
     (value) => {
-        if (value.kichThuocs)                            //NOTE: sort lại kích thước theo thứ tự
-            value.kichThuocs = sortSizes(value.kichThuocs);
+        console.log("log here");
+        if (value.kichThuocs)                            
+            value.kichThuocs = sortSizes(value.kichThuocs);//NOTE: sort lại kích thước theo thứ tự
         checkOutFit.id = value.id;
         checkOutFit.checkSize = outfitDisplay.display.kichThuocs?.length == 1 ? outfitDisplay.display.kichThuocs[0].maKichThuoc : null;
         checkOutFit.full = outfit.value.id == value.id && checkAll.value ? true : false;
@@ -99,11 +100,14 @@ const showSize = computed(() => {
     return false;
 })
 const chooseOutfitHandle = (id) => {
-    if (id == outfit.value.id)
+    if (id == outfit.value.id){
         outfitDisplay.display = outfit.value;
+        checkOutFit.full = false;
+    }
     else
         outfitDisplay.display = phanLoai.value.find(item => item.id == id)
-    checkAll.value = false; // chon 1 cai --> chon het bi huy
+    checkAll.value = false;
+     // chon 1 cai --> chon het bi huy
 }
 const uncheckedOutFitHandle = () => {
     outfitDisplay.display = outfit.value
@@ -118,8 +122,9 @@ const addCart = () => {
             id: checkOutFit.id,
             size: checkOutFit.checkSize,
             quantity: checkOutFit.quantity,
-            full: checkOutFit.full
-        })
+            full: checkOutFit.full,
+        }, outfitDisplay.display
+    )
     }
 }
 const activeAcessory = computed(() => {

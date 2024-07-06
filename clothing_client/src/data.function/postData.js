@@ -16,6 +16,7 @@ export const saveCart = async(userId, insertCart, deleteCart=[])=>{
         deleteCart:  JSON.stringify(deleteCart)  
     })
     if(response.status === 200) {
+        console.log(response);
         return true;
     } else {
         return response;
@@ -31,7 +32,7 @@ export const saveOrder = async(cartItem, cartDetail, orderDetail, user=null) =>{
             tamTinh: orderDetail.tamTinh,
             tongUuDai: orderDetail.tongUuDai,
             tongThue: orderDetail.tamTinh - orderDetail.tongUuDai,
-            nguoiDung:user==null ? null : user.uid,
+            nguoiDung: !user ? null : user.uid,
             phieuKhuyenMai:orderDetail.maKhuyenMai,
             payment:"DIRECT"
         }
@@ -132,7 +133,7 @@ export const addPromotion = async(data, ids) =>{
     })
     console.log(response);
     if(response.status === 200) {
-        return response.data.data.promotion_id;
+        return response.data.data.promotion_id ? response.data.data.promotion_id : null;
     } else {
         return false;
     }

@@ -51,7 +51,7 @@ export const getCartItems = async(cartList)=>{
     }
 }
 export const getPromotionCategory = async ()=>{
-    const response = await axios.get("/danh-muc/danh-sach-khuyen-mai-danh-muc");
+    const response = await axios.get("/khuyen-mai/danh-sach-khuyen-mai-danh-muc");
     if(response.status === 200) {
         return response.data.data.theloai_promotions;
     } else {
