@@ -61,6 +61,10 @@ const sendCode = () => {
 
 <template>
     <div class="reset-pass-main">
+    <div class="brand-header d-flex flex-column justify-content-center align-items-center">
+        <img src="/images/logo-anh-duong.png" alt="">
+        <div class="brand-name font-effect-fire">Anh Duong Store</div>
+    </div>
         <div v-if="!reset.success" class="form-container">
             <div v-if="!reset.showResetForm" class="logo-container">
                 Quên mật khẩu ?
@@ -110,6 +114,24 @@ const sendCode = () => {
     </div>
 </template>
 <style scoped>
+.brand-header {
+    width: 300px;
+    height: 300px;
+}
+.brand-header img{
+    width:200px;
+    height: 200px;
+}
+.brand-name {
+    font-size: 24px;
+    font-weight: 600;
+    text-align: center;
+    color: #ff6d6d;
+    margin-bottom: 20px;
+}
+.font-effect-fire {
+    text-shadow: 0 -0.05em 0.2em #FFF, 0.01em -0.02em 0.15em #FE0, 0.01em -0.05em 0.15em #FC0, 0.02em -0.15em 0.2em #F90, 0.04em -0.20em 0.3em #F70, 0.05em -0.25em 0.4em #F70, 0.06em -0.2em 0.9em #F50, 0.1em -0.1em 1.0em #F40;
+} 
 .form-container {
     max-width: 500px;
     background-color: #fff;

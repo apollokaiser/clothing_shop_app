@@ -13,7 +13,8 @@ const routes = [
       {
         path: '',
         name: "homePage",
-        component: () => import("@/components/HomePage.vue")
+        component: () => import("@/components/HomePage.vue"),
+        meta: { transition: 'fade' }
       },
       {
         path: 'dang-ky',
@@ -51,7 +52,8 @@ const routes = [
         path: 'trang-phuc/:slug/:id',
         name: 'outfit',
         component: () => import("@/views/OutfitDetailPage.vue"),
-        props: route => ({ ...route.params })
+        props: route => ({ ...route.params }),
+        meta: { transition: 'fade' }
       },
       {
         path: 'gio-hang-cua-toi/:uid/:slug',
@@ -133,16 +135,89 @@ const routes = [
         component: () => import("@/components/Admin/Content.vue"),
       },
       {
-        path:'/khuyen-mai/danh-sach-khuyen-mai',
-        name:'promotion',
+        path:"dat-coc/:oid",
+        name: "payment-confirm",
+        component: () => import("@/components/Admin/Deposit.vue"),
+        props: route => ({...route.params }),
+      },
+      {
+        path:"don-thue/:id",
+        name: "order",
+        component: () => import("@/components/Admin/OrderManagement/OrderInfo.vue"),
+        props: route => ({...route.params }),
+      },
+      {
+        path:'bao-cao',
+        name:'report',
+        component: () => import("@/components/Admin/Report.vue"),
+      },
+      {
+        path:'nhan-vien',
+        name:'admin-staff',
+        component: () => import("@/components/Admin/Admin_Staff.vue"),
+        children:[
+          {
+            path:'',
+            name:'staff-list',
+            component: () => import("@/components/Admin/AdminManagement/StaffContent.vue"),
+          },
+          {
+            path:'thong-tin-nhan-vien/:aid',
+            name:'staff-info',
+            component: () => import("@/components/Admin/AdminManagement/StaffDetail.vue"),
+            props: route => ({...route.params }),
+            meta: { transition: 'fade' }
+          },
+          {
+            path:'them-nhan-vien',
+            name:'add-staff',
+            component: () => import("@/components/Admin/AdminManagement/AddStaff.vue"),
+            meta: { transition: 'fade' }
+          },
+          {
+            path:'cap-nhat-nhan-vien/:id',
+            name:'update-staff',
+            component: () => import("@/components/Admin/AdminManagement/UpdateStaff.vue"),
+            props: route => ({...route.params }),
+          }
+        ]
+      }
+      ,
+      {
+        path:'trang-phuc',
+        name:'admin-product',
+        component: () => import("@/components/Admin/Admin_OutfitPage.vue"),
+        children:[
+          {
+            path:'',
+            name:'admin-product-list',
+            component: () => import("@/components/Admin/OutfitManagement/Outfit_Content.vue"),
+          },
+          {
+            path:'them-trang-phuc',
+            name:'add-outfit',
+            component: () => import("@/components/Admin/OutfitManagement/AddOutfit.vue"),
+          },
+          {
+            path:'cap-nhat-trang-phuc/:id',
+            name:'update-outfit',
+            component: () => import("@/components/Admin/OutfitManagement/UpdateOutfit.vue"),
+            props: route => ({...route.params }),
+          },
+        ]
+      },
+      {
+        path:'khuyen-mai/danh-sach-khuyen-mai',
+        name:'admin-promotion',
         component: () => import("@/components/Admin/PromotionComponent.vue"),
       },
       {
         path:'/khuyen-mai/thong-tin-khuyen-mai/:id',
         name:'promotion-info',
-        component: () => import("@/components/Admin/PromotionDetail.vue"),
+        component: () => import("@/components/Admin/PromotionManagement/PromotionDetail.vue"),
         props: route => ({...route.params }),
-      }
+      },
+  
     ]
   },
   {
@@ -152,9 +227,11 @@ const routes = [
   }
 ]
 const router = createRouter({
+  mode: 'history', // or 'hash'
   history: createWebHistory(import.meta.env.BASE_URL),
   routes,
-  // linkActiveClass: 'nav-active-link',
+  //  linkActiveClass: 'nav-active-link',
+  linkExactActiveClass:"active",
   scrollBehavior(to, from, savedPosition) {
     if (to.path == "/") return savedPosition;
     return { top: 0, left: 0 };

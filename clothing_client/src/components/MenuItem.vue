@@ -1,6 +1,6 @@
 <template>
     <li :class="{ 'sub-menu': hasSubMenu, 'font-effect-fire': props.item.khuyenMai }">
-        <Link :to="{path: props.item.slug}">
+        <Link :to="{name:name,params:{slug: props.item.slug, id:item.maLoai}}" v-bind="$attrs" active-class="active">
         {{ props.item.tenLoai }}
         <i v-if="hasSubMenu" class="fa fa-chevron-down" aria-hidden="true"></i>
         </Link>
@@ -22,7 +22,12 @@ const props = defineProps({
 const hasSubMenu = computed(() => {
     return props.item.children && props.item.children.length > 0;
 })
+const name = computed(() =>{
+    if(props.item.slug =="/") return "homePage";
+    else return "category";
+})
 </script>
 
 <style scoped>
+
 </style>

@@ -41,7 +41,7 @@
                     </select>
                     <select v-model="myAddress.ward" name="" id="">
                         <option checked value="0">Chọn xã, phường, thị trấn</option>
-                        <option v-if="myAddress.province != '' && myAddress.district != ''" v-for="item in city.ward"
+                        <option v-if="myAddress.province != '' && myAddress.district != ''" v-for="item in city.ward" :key="item.district_id"
                             :value="item.ward_id">{{ item.ward_name }}</option>
                     </select>
                 </div>

@@ -104,7 +104,7 @@
       </div>
       <div v-if="!user.taiKhoan" class="profile-label password">
         <label>Mật khẩu:</label>
-        <span>Thay đổi</span>
+        <span data-bs-toggle="modal" data-bs-target="#changePassword">Thay đổi</span>
       </div>
       <div v-else class="profile-label password">
         <label>Liên kết tài khoản:</label>
@@ -134,11 +134,15 @@
           </svg>
         </span>
       </div>
+      <ChangePassword></ChangePassword>
       <div v-if="showUpdateBtn" class="apply-change">
         <button @click="unhandleUpdate(true)">Hủy bỏ</button>
         <button @click="changeUserInfo">Thay đổi</button>
       </div>
     </div>
+    <Result v-if="requestPending.error || requestPending.success" :success="requestPending.success" :error="requestPending.error">
+        <span>{{ requestPending.message }}</span>
+      </Result>
   </div>
 </template>
 
@@ -293,7 +297,9 @@ import router from "@/router";
 import { authStore } from "@/stores/user.store";
 import { convertToSlug } from "@/utils/util.function";
 import { storeToRefs } from "pinia";
-import { computed, reactive } from "vue";
+import { computed, reactive, watch } from "vue";
+import Result from "./Admin/Result.vue";
+import ChangePassword from '@/components/authentication/ChangePassword.vue';
 const auth = authStore();
 const { user } = storeToRefs(auth);
 const updateUser = reactive({
@@ -304,11 +310,12 @@ const updateCommand = reactive({
   updateName: false,
   updatePhone: false,
 });
+//UPDATED: Đã cập nhật user.value.address[0].diaChi
 const address = computed(() => {
   if (user.value.address.length == 0) return "Chưa có";
   return (
-    user.value.address.find(address => address.isDefault).diaChi ||
-    user.value.address[0]
+    user.value.address.find(address => address.isDefault)?.diaChi ||
+    user.value.address[0].diaChi
   );
 });
 const updateNameCommand = () => {
@@ -322,6 +329,7 @@ const requestPending = reactive({
     pending: false,
     success:false,
     error: false,
+    message:"",
 });
 const unhandleUpdate = (reset=false) => {
     if(reset==true) { // khi ấn hủy bỏ, trở lại trạng thái ban đầu
@@ -337,7 +345,21 @@ const unhandleUpdate = (reset=false) => {
     }
     return;
 };
+watch(()=>requestPending.success, value =>{
+  if(value==true) {
+    setTimeout(()=>{
+        requestPending.success = false;
+    }, 1500);
+  }
+})
 
+watch(()=>requestPending.error, value =>{
+  if(value==true) {
+    setTimeout(()=>{
+        requestPending.error = false;
+    }, 1500);
+  }
+});
 const showUpdateBtn = computed(()=>{
     if(updateUser.name !=user.value.name || updateUser.phone != user.value.phone) {
        return true;
@@ -352,11 +374,11 @@ const changeUserInfo = () =>{
             phone: updateUser.phone==user.value.phone ? "": updateUser.phone,
         }).then(response=>{
             if(response) {
-                alert("Update successfully");
+               requestPending.message = "Thay đổi thành công"
                 requestPending.pending = false;
                 requestPending.success = true;
             } else {
-                alert("Update failed");
+              requestPending.message = "Thay đổi thất bại"
                 requestPending.pending = false;
                 requestPending.error = true;
             }

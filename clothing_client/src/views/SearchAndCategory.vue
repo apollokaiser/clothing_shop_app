@@ -13,9 +13,18 @@
                     </Link>
                 </div>
             </div>
-            <div v-else class="has-outfit">
+            <div v-else class="has-outfit container content-container">
                 <Outfit v-for="item in outfit" :key="item.id" :outfit="item" />
-                <!--outfit -->
+                <div class="see-more">
+                    <span>
+                        <i v-if="!hiddenLoad && outfit.length >=12" @click="loadMore" class="me-2">Xem thêm</i>
+                        <i v-if="hiddenLoad && outfit.length >=12" @click="hiddenLoading" class="me-2">Ẩn bớt</i>
+                        <svg v-if="outfit.length >12" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="#ee58a6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M5 12h13M12 5l7 7-7 7" />
+                        </svg>
+                    </span>
+                </div>
             </div>
         </div>
     </div>
@@ -39,7 +48,8 @@
     justify-content: center;
     flex-wrap: wrap;
 }
-.search-content-container .has-outfit{
+
+.search-content-container .has-outfit {
     display: flex;
     width: 100%;
     height: 100%;
@@ -47,6 +57,7 @@
     justify-content: flex-start;
     flex-wrap: wrap;
 }
+
 .search-content-container .no-outfit .notification-content {
     display: flex;
     width: 40%;
@@ -75,7 +86,7 @@
     content: "";
     background-color: #ccc;
     position: absolute;
-    bottom:0%;
+    bottom: 0%;
     left: 0%;
     transform: rotate(60deg);
 }
@@ -143,31 +154,106 @@
     box-shadow: #D6D6E7 0 3px 7px inset;
     transform: translateY(2px);
 }
+
+.content-container {
+    width: 100%;
+    padding: 10px;
+    border-radius: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+.see-more {
+    margin-top: 20px;
+    font-size: 24px;
+    color: #ee58a6;
+    width: 100%;
+}
+
+.see-more span {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    transition: all .3s ease;
+}
 </style>
 <script setup>
 import { RouterView } from 'vue-router';
 import { useRoute, useRouter } from 'vue-router';
 import { onBeforeMount, ref } from 'vue';
 import Outfit from '@/components/Outfit.vue';
-import { search } from '@/data.function/getData';
+import { search, getOutfitByCategory } from '@/data.function/getData';
 import Link from '@/components/Link.vue';
+import Swal from 'sweetalert2';
 const route = useRoute();
 const router = useRouter();
 const outfit = ref([]);
+const page = ref(0);
+const hiddenLoad = ref(false);
 onBeforeMount(() => {
     if (route.path.includes('danh-muc')) {
-        // get Category  
+        let id = route.params.id
+        getOutfitByCategory(id, page.value).then(response => {
+            if (!response) return;
+            else
+                outfit.value = response;
+        })
     } else if (route.path.includes('tim-kiem')) {
         let keyword = route.params.keyword;
         if (keyword) {
-            search(keyword).then(response => {
+            search(keyword, page.value).then(response => {
                 if (response.status == 200)
-                 console.log(response);
-                    outfit.value = response.data.trangphucs;
+                    console.log(response);
+                outfit.value = response.data.trangphucs;
             })
         }
     } else {
         router.push("/");
     }
 })
+const loadMore = () => {
+    page.value++;
+    if (route.path.includes('danh-muc')) {
+        let id = route.params.id
+        getOutfitByCategory(id, page.value).then(response => {
+            if (!response) return;
+            else
+                outfit.value = [...outfit.value, ...response];
+            if (response.length == 0) {
+                Swal.fire({
+                    title: 'Thông báo',
+                    text: 'Bạn đã xem hết rồi đấy !',
+                    icon: 'info',
+                    confirmButtonText: 'Đã hiểu'
+                })
+                hiddenLoad.value = true;
+            }
+        })
+    } else if (route.path.includes('tim-kiem')) {
+        let keyword = route.params.keyword;
+        if (keyword) {
+            search(keyword, page.value).then(response => {
+                if (response.status == 200)
+                    outfit.value = [...outfit.value, ...response.data.trangphucs];
+                if (response.data.trangphucs == 0) {
+                    Swal.fire({
+                        title: 'Thông báo',
+                        text: 'Bạn đã xem hết rồi đấy !',
+                        icon: 'info',
+                        confirmButtonText: 'Đã hiểu'
+                    })
+                    hiddenLoad.value = true;
+                }
+            })
+        }
+    }
+}
+const hiddenLoading = () => {
+    outfit.value = outfit.value.slice(0, 12);
+    hiddenLoad.value = false;
+    page.value = 0;
+}
 </script>

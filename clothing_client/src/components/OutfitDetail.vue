@@ -1,31 +1,186 @@
 <script setup>
 import { computed, onBeforeMount, reactive, ref, toRaw, watch } from "vue";
+import { Toast } from "@/utils/notification";
 import { getOutFitDetail } from "@/data.function/getData";
 import convertToVND from "@/utils/convertVND";
 import { sortSizes } from "@/utils/util.function";
 import { useCartStore } from "@/stores/cart.store";
+import { useInitStore } from "@/stores/init.store";
+
+const initStore = useInitStore();
 const cart = useCartStore();
+const carouselIndex = ref(0);
 const outfit = ref();
 const phanLoai = ref([]);
-const checkAll = ref(false);
+const quickview = ref(false);
 const outfitDisplay = reactive({
     name: "",
-    display: {}
+    display: {},
 });
-const quickview = ref(false);
 const checkOutFit = reactive({
     id: "",
-    checkSize: null,
+    checkSize: "NONE",
     quantity: 1,
-    full: false,
 });
+
+const props = defineProps({
+    id: {
+        type: String,
+        required: true,
+    },
+    short: {
+        type: Boolean,
+        required: false,
+    },
+    details: {
+        type: Object,
+        required: false,
+    },
+});
+onBeforeMount(() => {
+    initStore.addAttenttion(props.id);
+    if (props.short == false) quickview.value = true;
+    if (props.details) {
+        outfit.value = props.details;
+        outfitDisplay.name = outfit.value.tenTrangPhuc;
+        outfitDisplay.display = outfit.value.manhTrangPhucs?.length >0 ? outfit.value.manhTrangPhucs[0] : outfit.value;
+        phanLoai.value = outfit.value.manhTrangPhucs?.length >0 ? outfit.value.manhTrangPhucs : [];
+    } else {
+        getOutFitDetail(props.id).then((res) => {
+            outfit.value = res;
+            outfitDisplay.name = outfit.value.tenTrangPhuc;
+            outfitDisplay.display = outfit.value.manhTrangPhucs ? outfit.value.manhTrangPhucs[0] : outfit.value;
+            phanLoai.value = outfit.value.manhTrangPhucs ? outfit.value.manhTrangPhucs : [];
+        });
+    }
+});
+const outfitStatus = computed(() => {
+    let thisOutfit = outfitDisplay.display.kichThuocs.find(size => size.maKichThuoc == checkOutFit.checkSize);
+    if (outfitDisplay.display.tinhTrang) return 1;
+    else if (thisOutfit.soLuong == 0) return -1;
+    return 0;
+})
+const outfitSize = computed(() => {
+    if (outfitDisplay.display) return outfitDisplay.display.kichThuocs.find(size => size.maKichThuoc == checkOutFit.checkSize);
+    return null;
+})
+const hasOutfitPieces = computed(() => {
+    if (outfit.value.manhTrangPhucs) return toRaw(outfit.value.manhTrangPhucs).length > 0;
+    return false;
+});
+const showSize = computed(() => {
+    if (outfitDisplay.display.kichThuocs[0] != "NONE")
+        return toRaw(outfitDisplay.display.kichThuocs).length > 0;
+    return false;
+});
+const price = computed(() => {
+    if (!outfitDisplay.display.giaTien) return "Chọn để xem";
+    return convertToVND(outfitDisplay.display.giaTien);
+});
+
+// Watcher
+watch(
+    () => outfitDisplay.display,
+    (value) => {
+        if (value.kichThuocs[0].makichThuoc != "NONE") {
+            //NOTE: sort lại kích thước theo thứ tự
+            value.kichThuocs = sortSizes(value.kichThuocs);
+            checkOutFit.checkSize = outfitDisplay.display.kichThuocs.find(size=> size.soLuong !=0)?.maKichThuoc;
+        } else {
+            checkOutFit.checkSize = "NONE";
+        }
+        checkOutFit.id = value.id;
+    }
+);
+// watch(
+//     () => checkOutFit.checkSize,
+//     (newValue, oldValue) => {
+//         console.log(newValue, oldValue);
+//         if (newValue != oldValue) {
+//             console.log("diff");
+//             if(outfitDisplay.display.kichThuocs.find(size=> size.maKichThuoc == newValue).soLuong == 0) {
+//                 Toast.fire({
+//                     icon: "error",
+//                     title: "Sản phẩm đã hết hàng!"
+//                 })
+//                 checkOutFit.checkSize = oldValue;
+//                 return;
+//             }
+//             checkOutFit.quantity = 1;
+//         }
+//     }
+// );
+watch(()=> checkOutFit.quantity, value =>{
+    if(value <= 0) checkOutFit.quantity = 1;
+    if(value > outfitSize.value.soLuong) {
+        Toast.fire({
+            icon: "error",
+            title: "Số lượng quá hạn!"
+        })
+        checkOutFit.quantity = outfitSize.value.soLuong;
+    }
+})
+const chooseOutfitSize =(id) =>{
+            if(outfitDisplay.display.kichThuocs.find(size=> size.maKichThuoc == id).soLuong == 0) {
+                Toast.fire({
+                    icon: "error",
+                    title: "Sản phẩm đã hết hàng!"
+                })
+            } else {
+                checkOutFit.checkSize = id;
+            }
+}
+ // function
+const chooseOutfitHandle = (id) => {
+    let temp =  phanLoai.value.find((item) => item.id == id);
+    if(temp) {
+        // kiểm tra hết hàng chưa
+        if(temp.kichThuocs.length >= 1 && temp.kichThuocs.every(size=> size.soLuong == 0)) {
+            Toast.fire({
+                icon: "error",
+                title: "Sản phẩm đã hết hàng!"
+            })
+            return;
+        } else {
+            outfitDisplay.display = temp;
+        }
+    }
+};
+//FIXME: Thêm parentId và detail
+const addCart = () => {
+    //NOTE: xem lại watch của outfitDisplay.display để hiểu chi tiết 
+    if(!checkOutFit.checkSize) {
+        Toast.fire({
+            icon: "error",
+            title: "Sản phẩm đã tạm hết !"
+        })
+        return;
+    }
+        let detail =toRaw(outfit.value);
+        detail.hinhAnh = outfit.value.hinhAnhs[0];
+        detail.hinhAnhs = null;
+        detail.moTa = null;
+        cart.addCart(
+            {
+                id: checkOutFit.id,
+                size: checkOutFit.checkSize,
+                quantity: checkOutFit.quantity,
+                parentId: outfit.value.id,
+            },
+            detail
+        );
+};
+
 const handleQuantity = {
     add: () => {
-        if (checkOutFit.quantity < outfitDisplay.display.soLuong) {
+        if (checkOutFit.quantity < outfitSize.value?.soLuong) {
             checkOutFit.quantity++;
         } else {
-            alert("Số lượng đã vượt quá !!")
-            checkOutFit.quantity = outfitDisplay.display.soLuong;
+            Toast.fire({
+                icon: "error",
+                title: "Số lượng quá hạn !"
+            })
+            checkOutFit.quantity = outfitSize.value?.soLuong;
         }
     },
     reduce: () => {
@@ -34,138 +189,31 @@ const handleQuantity = {
         } else {
             checkOutFit.quantity = 1;
         }
-    }
-}
-const checkSizeCommand = (id) => {
-    checkOutFit.checkSize = id;
-};
-const props = defineProps({
-    id: {
-        type: String,
-        required: true,
-    },short: {
-        type: Boolean,
-        required: false,
     },
-    details: {
-        type: Object,
-        required: false,
-    }
-});
-onBeforeMount(() => {
-    if (props.short == false) quickview.value = true;
-    if (props.details) {
-        outfit.value = props.details;
-        outfitDisplay.name = outfit.value.tenTrangPhuc;
-        outfitDisplay.display = outfit.value;
-        phanLoai.value = outfit.value.phuKiens;
-    } else {
-        getOutFitDetail(props.id).then((res) => {
-            outfit.value = res;
-            outfitDisplay.name = outfit.value.tenTrangPhuc;
-            outfitDisplay.display = outfit.value;
-            phanLoai.value = outfit.value.phuKiens;
-        });
-    }
-});
-watch(
-    () => checkOutFit.quantity,
-    (value) => {
-        if (value > outfitDisplay.display.soLuong) {
-            checkOutFit.quantity = outfitDisplay.display.soLuong;
-        } else if (value < 1) {
-            checkOutFit.quantity = 1;
-        }
-    }
-);
-watch(
-    () => outfitDisplay.display,
-    (value) => {
-        console.log("log here");
-        if (value.kichThuocs)                            
-            value.kichThuocs = sortSizes(value.kichThuocs);//NOTE: sort lại kích thước theo thứ tự
-        checkOutFit.id = value.id;
-        checkOutFit.checkSize = outfitDisplay.display.kichThuocs?.length == 1 ? outfitDisplay.display.kichThuocs[0].maKichThuoc : null;
-        checkOutFit.full = outfit.value.id == value.id && checkAll.value ? true : false;
-    }
-)
-const hasAccessory = computed(() => {
-    if (outfit.value.phuKiens)
-        return toRaw(outfit.value.phuKiens).length > 0;
-    return false;
-});
-const showSize = computed(() => {
-    if (outfitDisplay.display.kichThuocs)
-        return toRaw(outfitDisplay.display.kichThuocs).length > 0;
-    return false;
-})
-const chooseOutfitHandle = (id) => {
-    if (id == outfit.value.id){
-        outfitDisplay.display = outfit.value;
-        checkOutFit.full = false;
-    }
-    else
-        outfitDisplay.display = phanLoai.value.find(item => item.id == id)
-    checkAll.value = false;
-     // chon 1 cai --> chon het bi huy
-}
-const uncheckedOutFitHandle = () => {
-    outfitDisplay.display = outfit.value
-    checkAll.value = true; // dbclick vào bất kỳ --> check tất cả
-    checkOutFit.full = true;
-}
-const addCart = () => {
-    if (checkOutFit.checkSize == null && outfitDisplay.display.kichThuocs.length > 0) {
-        alert("Vui lòng chọn kích cỡ trang phục muốn thuê ! ");
-    } else {
-        cart.addCart({
-            id: checkOutFit.id,
-            size: checkOutFit.checkSize,
-            quantity: checkOutFit.quantity,
-            full: checkOutFit.full,
-        }, outfitDisplay.display
-    )
-    }
-}
-const activeAcessory = computed(() => {
-    if (checkAll.value == true) {
-        return true;
-    } else {
-        if (outfit.value.id == outfitDisplay.display.id) {
-            return 999;
-        }
-        return outfitDisplay.display.id;
-    }
-})
-const price = computed(() => {
-    if(!outfitDisplay.display.giaTien) return "Đang cập nhật"
-    let price = outfitDisplay.display.giaTien;
-    if (checkOutFit.full==true) {
-        price = outfitDisplay.display.giaTronBo;
-    }
-    return convertToVND(price);
-})
+};
 </script>
 
 <template>
     <div class="outfit-detail container">
-        <div class="outfit-detail-container p-2">
+        <div class="outfit-detail-container py-2">
             <div class="outfit-detail-img col-lg-4 col-sm-7 col-xm-12">
-                <div class="outfit-preview-img">
-                    <div class="outfit-img">
-                        <img v-for="item in outfit.hinhAnhs" :key="item" :src="item" alt="" />
-                    </div>
-                    <div class="slide-btn next-img">
-                        <i class="fa fa-chevron-right" aria-hidden="true"></i>
-                    </div>
-                    <div class="slide-btn prev-img">
-                        <i class="fa fa-chevron-left" aria-hidden="true"></i>
-                    </div>
-                </div>
-
+                <v-carousel class="outfit-preview-img" v-model="carouselIndex" hide-delimiters>
+                    <v-carousel-item v-for="(item, index) in outfit.hinhAnhs" :key="item" :value="index" :src="item">
+                    </v-carousel-item>
+                    <template v-slot:prev="{ props }">
+                        <div @click="props.onClick" class="slide-btn prev-img">
+                            <i class="fa fa-chevron-left" aria-hidden="true"></i>
+                        </div>
+                    </template>
+                    <template v-slot:next="{ props }">
+                        <div @click="props.onClick" class="slide-btn next-img">
+                            <i class="fa fa-chevron-right" aria-hidden="true"></i>
+                        </div>
+                    </template>
+                </v-carousel>
                 <div class="outfit-carousel-img">
-                    <div v-for="item in outfit.hinhAnhs" :key="item" class="outfit-carousel-item">
-                        <img :src="item" alt="preview 1" />
+                    <div v-for="(item, index) in outfit.hinhAnhs" :key="item" class="outfit-carousel-item">
+                        <img @click="carouselIndex = index" :src="item" alt="preview 1" />
                     </div>
                 </div>
             </div>
@@ -182,47 +230,42 @@ const price = computed(() => {
                     <div class="outfit-notification mt-3">
                         <div class="outfit-status">
                             <span>Tình trạng: </span>
-                            <span class="status-notice ps-1">Đang kinh doanh</span>
+                            <span class="status-notice ps-1">
+                                <b>{{ outfitStatus == 1 ? 'Đang cho thuê' : (outfitStatus == -1 ? 'Tạm hết' : 'Ngừng cho thuê') }}</b>
+                            </span>
                         </div>
-                        <div class="outfit-stock">
+                        <!-- <div class="outfit-stock">
                             <span>Số lượng: </span>
                             <span class="stock-notice ps-1">{{ outfitDisplay.display.soLuong }}</span>
-                        </div>
+                        </div> -->
                     </div>
                     <div class="outfit-price col-sm-6 d-flex align-items-baseline">
-                        <span>Giá:</span>
-                        <span>{{price }}</span>
+                        <span>Giá:</span><span>{{ price }}</span>
                     </div>
                     <!--size-->
                     <div v-if="showSize" class="outfit-size col-sm-12 d-flex align-items-baseline">
                         <span>Kích thước:</span>
                         <div class="outfit-size-box">
-                            <div v-for="size in outfitDisplay.display.kichThuocs" :key="size.id" class="size-item">
-                                <input hidden type="radio" :id="'size-' + size.maKichThuoc" name="check_size"
-                                    :value="size.maKichThuoc" />
-                                <label :for="'size-' + size.maKichThuoc"
-                                    :class="{ sd: checkOutFit.checkSize == size.maKichThuoc }"
-                                    @click="checkSizeCommand(size.maKichThuoc)">
+                            <div v-for="size in outfitDisplay.display.kichThuocs" :key="size.id" class="size-item" :class="{'not-allow-click':size.soLuong < 1 }">
+                                <input hidden type="radio"
+                                    :id="'size-' + size.maKichThuoc" name="check_size" :value="size.maKichThuoc" />
+                                <label  :for="'size-' + size.maKichThuoc"
+                                    :class="{ 'sd': checkOutFit.checkSize == size.maKichThuoc}"
+                                    @click="chooseOutfitSize(size.maKichThuoc)"
+                                    >
                                     {{ size.maKichThuoc }}
                                     <i class="fa fa-check" aria-hidden="true"></i>
                                 </label>
                             </div>
                         </div>
                     </div>
-                    <div v-if="hasAccessory || outfit.tenPhanLoai"
-                        class="outfit-accessory col-sm-12 d-flex align-items-baseline">
+                    <div v-if="hasOutfitPieces" class="outfit-accessory col-sm-12 d-flex align-items-baseline">
                         <span>Phân loại:</span>
                         <div class="select-accessory">
-                            <div v-if="outfit.tenPhanLoai" @click="chooseOutfitHandle(outfit.id)"
-                                @dblclick="uncheckedOutFitHandle" class="accessory-item"
-                                :class="{ active: activeAcessory == true || activeAcessory == 999 }">{{ outfit.tenPhanLoai }}
-                            </div>
-                            <div v-if="outfit.phoiSan" :class="{ 'check-type': outfitDisplay.display.id == outfit.id }"
-                                class="accessory-item">Trọn bộ</div>
-                            <div v-for="phuKien in outfit.phuKiens" :key="phuKien.id" @click="chooseOutfitHandle(phuKien.id)"
-                                @dblclick="uncheckedOutFitHandle" class="accessory-item"
-                                :class="{ active: phuKien.id == activeAcessory || activeAcessory == true }">
-                                {{ phuKien.tenTrangPhuc }}
+                            <div v-for="item in outfit.manhTrangPhucs" :key="item.id"
+                                @click="chooseOutfitHandle(item.id)" class="accessory-item"
+                                :class="{ active: item.id == outfitDisplay.display.id }">
+                                {{ item.tenTrangPhuc }}
                             </div>
                         </div>
                     </div>
@@ -234,9 +277,9 @@ const price = computed(() => {
                             <div class="number-right" @click="handleQuantity.add"></div>
                         </div>
                     </div>
-                    <div class="outfit-add-cart col-sm-12 d-flex justify-content-evenly align-items-baseline">
+                    <div class="outfit-add-cart col-sm-12 d-flex align-items-baseline">
                         <button @click.prevent="addCart" class="btn">THÊM VÀO GIỎ</button>
-                        <button class="btn">THUÊ NGAY</button>
+                        <!-- <button class="btn">THUÊ NGAY</button> -->
                     </div>
                 </div>
             </div>
@@ -253,7 +296,7 @@ const price = computed(() => {
 <style scoped>
 .outfit-detail-container {
     display: flex;
-    width: 90%;
+    /* width: 90%; */
     flex-wrap: wrap;
 }
 
@@ -268,22 +311,6 @@ const price = computed(() => {
     overflow: hidden;
     padding: 0px 10px 10px 10px;
 }
-
-.outfit-detail-container .outfit-detail-img .outfit-img img {
-    transition: all 0.5s ease;
-    object-fit: cover;
-    padding: 20px;
-}
-
-.outfit-img {
-    display: flex;
-    flex-wrap: nowrap;
-}
-
-.outfit-img:hover {
-    transform: translateX(-100%);
-}
-
 .slide-btn {
     position: absolute;
     top: 50%;
@@ -421,50 +448,6 @@ const price = computed(() => {
     margin-top: 30px;
 }
 
-/* .number-control {
-    display: flex;
-    align-items: center;
-}
-
-.number-left::before,
-.number-right::after {
-    content: attr(data-content);
-    background-color: #fffafa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.25rem;
-    border: 1px solid #a4aaaf;
-    width: 25px;
-    color: black;
-    transition: background-color 0.3s;
-    cursor: pointer;
-}
-
-.number-left::before {
-    content: "-";
-}
-
-.number-right::after {
-    content: "+";
-}
-
-.number-quantity {
-    text-align: center;
-    padding: 0.25rem;
-    border: 0;
-    width: 70px;
-    -moz-appearance: textfield;
-    border-top: 1px solid #a4aaaf;
-    border-bottom: 1px solid #a4aaaf;
-}
-
-.number-left:hover::before,
-.number-right:hover::after {
-    background-color: #666666;
-    color: #fff;
-} */
-
 .outfit-add-cart {
     margin-top: 50px;
     flex-wrap: wrap;
@@ -532,5 +515,8 @@ const price = computed(() => {
     display: flex;
     flex-wrap: wrap;
     justify-content: space-evenly;
+}
+.not-allow-click {
+    cursor: not-allowed;
 }
 </style>

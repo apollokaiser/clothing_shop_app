@@ -2,16 +2,18 @@
     padding: 0;
     margin: 0;
     box-sizing: border-box;
-    font: "Quicksand", sans-serif;
+    font-family: "Quicksand", sans-serif;
 }
 html,body {
     height: 100%;
+    overflow-x:hidden ;
     position: relative;
 }
 #app{
     display: flex;
     flex-direction: column;
     min-height: 100vh;
+    overflow-x:hidden ;
 }
 a{
     text-decoration: none;
@@ -30,6 +32,15 @@ img{
     object-fit: contain;
     object-position: center;
 }
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.3s, transform 0.5s;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
 .header-wrap-menu{
     flex:1 1 auto;
 }
@@ -43,7 +54,8 @@ ul.menu >li {
     margin: 0 12px;
 }
 ul.menu>li.font-effect-fire>a {
-    text-shadow: 0 -0.05em 0.2em #FFF, 0.01em -0.02em 0.15em #FE0, 0.01em -0.05em 0.15em #FC0, 0.02em -0.15em 0.2em #F90, 0.04em -0.20em 0.3em #F70, 0.05em -0.25em 0.4em #F70, 0.06em -0.2em 0.9em #F50, 0.1em -0.1em 1.0em #F40;
+    border-bottom: #e50076 !important;
+    /* text-shadow: 0 -0.05em 0.2em #FFF, 0.01em -0.02em 0.15em #FE0, 0.01em -0.05em 0.15em #FC0, 0.02em -0.15em 0.2em #F90, 0.04em -0.20em 0.3em #F70, 0.05em -0.25em 0.4em #F70, 0.06em -0.2em 0.9em #F50, 0.1em -0.1em 1.0em #F40; */
 } 
 ul.menu>li.font-effect-fire .sub-menu-list {
     /* text-shadow: 0 -0.05em 0.2em #FFF, 0.01em -0.02em 0.15em #FE0, 0.01em -0.05em 0.15em #FC0, 0.02em -0.15em 0.2em #F90, 0.04em -0.20em 0.3em #F70, 0.05em -0.25em 0.4em #F70, 0.06em -0.2em 0.9em #F50, 0.1em -0.1em 1.0em #F40; */
@@ -73,7 +85,8 @@ ul.menu>li.font-effect-fire .sub-menu-list a {
     width: 100%;
     letter-spacing: 0.75px;
     font-weight: 600;
-    font-size: 14px;
+    font-size: 16px;
+
     -webkit-transition: none;
     transition: none;
 }
@@ -91,7 +104,7 @@ ul.menu>li.font-effect-fire .sub-menu-list a {
     padding: 5px 22px;
     text-align: left;
     display: block;
-    font-size: 14px;
+    font-size: 15px;
     color: #252a2b;
     opacity: 0.85;
 }
@@ -178,3 +191,19 @@ li.sub-menu .sub-menu-list {
     color: #fff;
 }
 
+.button-swal {
+    display: inline-block;
+    padding: 7px 25px;
+    color: white !important;
+    border: none;
+    border-radius: 5px;
+    background-color:#198754;
+}
+.v-slide-group__content {
+    flex: 1 0 !important;
+    gap: 2px;
+}
+.v-slide-group__next, .v-slide-group__prev{
+    width: 0;
+    color: #252a2b;
+}

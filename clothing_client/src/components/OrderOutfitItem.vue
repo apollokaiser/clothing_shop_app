@@ -1,31 +1,26 @@
 <script setup>
 import { useCartStore } from "@/stores/cart.store";
 import { storeToRefs } from "pinia";
-import { ref, computed, watch } from "vue";
+import { computed } from "vue";
 import convertToVND from "@/utils/convertVND";
 const cart = useCartStore();
 const { cartDetail } = storeToRefs(cart);
+//cartIten
 const props = defineProps({
   product: {
     type: Object,
     required: true,
   },
 });
-const thisCartDetail = ref("");
-watch(
-  cartDetail,
-  (value) => {
-    thisCartDetail.value = value.find((item) => item.id == props.product.id);
-  },
-  {
-    deep: true,
-    immediate: true,
-  }
-);
+const thisCartDetail = computed(()=>{
+  return cartDetail.value.find(item => item.id == props.product.parentId);
+})
+const thisOutfitPiece = computed(()=>{
+  if(props.product.parentId == props.product.id) return thisCartDetail.value;
+  return thisCartDetail.value.manhTrangPhucs.find(piece => piece.id == props.product.id);
+})
 const price = computed(() => {
-  let giaTien = 0;
-  if (props.product.full) giaTien = thisCartDetail.value.giaTronBo;
-  else giaTien = thisCartDetail.value.giaTien;
+  let giaTien = thisOutfitPiece.value.giaTien;
   let price = giaTien * props.product.quantity - props.product.discount;
   return price;
 });
@@ -34,10 +29,10 @@ const price = computed(() => {
 <template>
   <div class="order-product-item">
     <div class="order-item-description">
-      <div class="order-item-name">{{ thisCartDetail.tenTrangPhuc }}</div>
+      <div class="order-item-name">{{ thisCartDetail.tenTrangPhuc }} <b class="text-warning" v-if="thisCartDetail.manhTrangPhucs?.length >0"> - {{ thisOutfitPiece.tenTrangPhuc }}</b></div>
       <div class="order-item-detail">
         <span
-          >Kích thước : <em>{{ props.product.size || "Không" }}</em></span
+          >Kích thước : <em>{{ props.product.size !="NONE" ? props.product.size : 'Không' }}</em></span
         >
         <span
           >Mã: <em>{{ props.product.id }}</em></span

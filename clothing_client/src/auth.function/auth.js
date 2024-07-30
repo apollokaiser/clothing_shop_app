@@ -19,7 +19,8 @@ export const login = async(user)=>{
 export const register = async(user) =>{
     const response = await axios.post("/auth/register", {
         email:user.email,
-        password:user.password
+        password:user.password,
+        name:user.name
     })
     if(response && response.status==200){
         return response.data;
@@ -69,4 +70,15 @@ export const updateUser = async (email, name, phone)=>{
         return null;
     }
 
+}
+export const changePasword = async(data) =>{
+    const response = await axios.post(`/user/change-password`, {
+        newPassword: data.newPassword,
+        oldPassword: data.oldPassword,
+    });
+    if(response.status === 200){
+        return response.data;
+    } else {
+        return null;
+    }
 }

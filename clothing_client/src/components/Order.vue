@@ -23,6 +23,17 @@ const orderAddress = reactive({
   district: "",
   ward: "",
 })
+const step = ref(1);
+const currentTitle = computed(()=> {
+        switch (step.value) {
+          case 1:
+            return 'Sign-up'
+          case 2:
+            return 'Create a password'
+          default:
+            return 'Account created'
+        }
+})
 const chooseAddress = ref("");
 const validAddress = computed(()=>{
   if(user.value.address.length > 0 && isLoggedIn.value) {
@@ -40,9 +51,9 @@ onBeforeMount(() => {
     if (validAddress.value !=false) {
       order.value.diaChiNguoiNhan = validAddress.value.diaChiNguoiNhan;
       chooseAddress.value = validAddress.value.diaChi;
-      order.value.tenNguoiNhan = user.value.name;
-      order.value.sdtNguoiNhan = user.value.phone || "";
     }
+    order.value.tenNguoiNhan = user.value.name;
+    order.value.sdtNguoiNhan = user.value.phone || "";
     chooseAddress.value = 0;
   }
   else if (address.value != "") {
@@ -106,7 +117,23 @@ watch(()=> orderAddress.address, value =>{
     <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
       <div class="modal-content">
         <div class="modal-body">
-          <section class="order-container">
+        <v-window v-model="step">
+          <v-window-item :value="1">
+            <div class="order-legacy">
+              <div class="order-legacy-title">Quy định thuê trang phục</div>
+              <div class="legacy-content">
+              <p></p>
+                <ul>
+                  <li>Về nơi nhận, chúng tôi chỉ cung cấp dịch vụ giới hạn trong nội/ ngoại thành Hồ Chí Minh cùng các tỉnh lân cận như Long An, Bình Phước, Bình Dương ...</li>
+                  <li>Khách hàng có thể chọn 2 phương thức đặt cọc là đặt khi nhận hàng hoặc nhận đặt cọc online</li>
+                  <li><b>Lưu ý: </b>Khi hủy đơn thuê sẽ không nhận lại số tiền cọc ! Trân trọng !</li>
+                  
+                </ul>
+              </div>
+            </div>
+          </v-window-item>
+          <v-window-item :value="2">
+            <section class="order-container">
             <header>Thuê trang phục</header>
             <form class="form">
               <div class="input-box">
@@ -181,6 +208,11 @@ watch(()=> orderAddress.address, value =>{
               <button class="close" data-bs-dismiss="modal">Xem lại đã !</button>
             </form>
           </section>
+          </v-window-item>
+        </v-window>
+        <div v-if="step==1" @click="step++" class="next-to-order">
+          <button>Tôi đã hiểu</button>
+        </div>
         </div>
       </div>
     </div>
@@ -335,5 +367,18 @@ button.close {
 }
 button.close:hover {
   background-color: #5f5d5d;
+}
+.next-to-order {
+  display: inline-block;
+  padding: 5px 20px;
+  background-color: #008722;
+  color: #fff;
+  border-radius: 5px;
+}
+.order-legacy-title {
+  font-size: 1.2rem;
+  color: #000;
+  font-weight: 600;
+  text-align: center;
 }
 </style>

@@ -38,7 +38,7 @@
                         <OrderOutfitItem v-for="item in orderItem" :key="item.id" :product="item" />
                     </div>
                 </div>
-                <div class="order-promotion">
+                <!-- <div class="order-promotion">
                     <div>Các ưu đãi được áp dụng</div>
                     <div class="order-promotion-item">
                         <ul style="list-style-type: disc;">
@@ -46,7 +46,7 @@
                             <li>Ưu đãi phiếu khuyến mãi 10%</li>
                         </ul>
                     </div>
-                </div>
+                </div> -->
                 <div class="order-payment">
                     <div>Chọn phương thức đặt cọc</div>
                     <div class="order-payment-method">
@@ -73,10 +73,16 @@
                 </div>
             </div>
         </div>
+        <Loading v-if="requestPending.pending"/>
+      <Result v-if="requestPending.error || requestPending.success " :success="requestPending.success" :error="requestPending.error">
+        <span>Thanh toán thành công{{ requestPending.message }}</span>
+      </Result>
     </div>
 </template>
 
 <script setup>
+import Loading from './Loading.vue';
+import Result from './Admin/Result.vue';
 import OrderOutfitItem from '@/components/OrderOutfitItem.vue'
 import { useCartStore } from '@/stores/cart.store';
 import { usePromotionStore } from '@/stores/promotion.store';
@@ -86,7 +92,8 @@ import { storeToRefs } from 'pinia';
 import convertToVND from '@/utils/convertVND';
 import { saveOrder } from '@/data.function/postData';
 import { useRouter } from 'vue-router';
-import { computed } from 'vue';
+import { computed, reactive } from 'vue';
+import Swal from 'sweetalert2';
 const auth = authStore();
 const cart = useCartStore();
 const khuyenMai = usePromotionStore();
@@ -96,19 +103,35 @@ const { order } = storeToRefs(donThue);
 const { cartItems, totalPrice, cartDetail } = storeToRefs(cart);
 const {totalDiscount} = storeToRefs(khuyenMai);
 const router = useRouter();
-
+const requestPending = reactive({
+    pending: false,
+    success: false,
+    error: false,
+    message: ''
+})
 const paymentHandle = ()=>{
     let orderUser  = isLoggedIn.value ? user.value : null;
     saveOrder(cartItems.value,cartDetail.value, order.value, orderUser).then(response=>{
         if(response.status==200){
-            cart.clearCart();
-            router.push({name:'order_success', params:{
-                uid: isLoggedIn.value ? user.value.uid : new Date().toString(), 
-                slug:"thanh-toan-thue-trang-phuc"
+          (async()=>{
+            const {value: success} = await Swal.fire({
+                title: 'Thông báo',
+                text: 'Bạn đã đăt dịch vụ thành công',
+                icon: 'success',
+                confirmButtonText: 'OK'
+            })
+            if(success) {
+                cart.clearCart();
+                router.push({name:'homePage'});
             }
-            });
+          })()
         } else {
-            alert('Đặt hàng thất bại');
+            Swal.fire({
+                title: 'Thông báo',
+                text: 'Đã xảy ra lỗi khi đặt hàng, vui lòng thử lại!',
+                icon: 'error',
+                confirmButtonText: 'OK'
+            })
         }
     })
 }

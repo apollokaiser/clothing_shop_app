@@ -40,7 +40,7 @@
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="15" y1="9" x2="9" y2="15"></line><line x1="9" y1="9" x2="15" y2="15"></line></svg>
                 <span>Xóa</span>
               </div>
-              <div class="update-address">
+              <div data-bs-toggle="modal" :data-bs-target="idModal" class="update-address">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#000000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.66V20a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h5.34"></path><polygon points="18 2 22 6 12 16 8 16 8 12 18 2"></polygon></svg>
                 <span>Cập nhật</span>
               </div>
@@ -49,6 +49,7 @@
               </div>
         </div>
         </Transition>
+        <UpdateAddress :address="props.address" :idModal="idModelTarget"></UpdateAddress>
       </div>
 </template>
 <style scoped>
@@ -140,8 +141,9 @@ svg {
 </style>
 
 <script setup>
-import { reactive, watch } from 'vue';
+import { computed, reactive, watch } from 'vue';
 import { authStore } from '@/stores/user.store';
+import UpdateAddress from './UpdateAddress.vue';
 const auth = authStore();
     const props =  defineProps({
         address: {
@@ -155,6 +157,12 @@ const auth = authStore();
       message:"",
       showUpdate:false
     })
+    const idModal = computed(()=>{
+  return "#updateAdress" + props.address.id;
+})
+const idModelTarget = computed(()=>{
+  return "updateAdress" + props.address.id;
+})
    const emit =  defineEmits(["showMessage"])
     const toggleAction = () => {
       action.showUpdate =!action.showUpdate;
@@ -192,8 +200,12 @@ const auth = authStore();
     }
     watch(action, value =>{
       if(value.showMessage){
-        console.log("emit-here ....");
-       emit('showMessage', value)
+       emit('showMessage', {
+        showMessage: value.showMessage
+        ,message: value.message
+        ,success: value.success
+       }
+       )
       }
     },
     {

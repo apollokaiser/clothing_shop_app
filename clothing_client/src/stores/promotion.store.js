@@ -18,9 +18,9 @@ export const usePromotionStore = defineStore("promotion", () => {
     const myPromotion = computed(() => {
         if (promotion.value && promotion.value.length > 0) {
             if (cartDetail.value && cartDetail.value.length > 0) {
-                let category = cartDetail.value.map(cat => cat.theLoai); // danh sách các thể loại của sản phẩm trong cart
+                let category = cartDetail.value.map(detail => detail.theLoai); // danh sách các thể loại của sản phẩm trong cart
                 return promotion.value.filter(item => {
-                    if(category.some(cat => item.theLoais.includes(cat))) return true;
+                    if (category.some(cat => item.theLoais.includes(cat))) return true;
                     return false;
                 });
             }
@@ -35,8 +35,21 @@ export const usePromotionStore = defineStore("promotion", () => {
         let discount = 0;
         let cartPromotion = cartItems.value.filter(cartItem => cartItem.promotion != null && cartItem.check == true)
         cartPromotion.forEach(element => {
+            let mainOutfit =  cartDetail.value.find(cart => cart.id == element.parentId);
+            let outfitPiece = null;
+            if(element.id == element.parentId) 
+                outfitPiece = mainOutfit;
+            else {
+                outfitPiece = mainOutfit.manhTrangPhucs.find(piece=> piece.id == element.id);
+                
+            }
             let thisPro = myPromotion.value?.find(p => p.maKhuyenMai == element.promotion);
-            discount += thisPro.giamTien + (thisPro.phanTramGiam /100) * cartDetail.value.find(cart => cart.id == element.id).giaTien * element.quantity;
+            let giamGia = thisPro.giamTien + (thisPro.phanTramGiam / 100) * outfitPiece.giaTien * element.quantity;
+            if (giamGia > thisPro.giamToiDa) {
+                discount += thisPro.giamToiDa;
+            } else {
+                discount += giamGia;
+            }
         })
         if (promotionCode.check) {
             let value = promotionCode.promotion.donVi == "PERCENT" ? (promotionCode.promotion.giaTriGiam / 100) * (totalPrice.value - discount) : promotionCode.promotion.giaTriGiam;
@@ -44,23 +57,23 @@ export const usePromotionStore = defineStore("promotion", () => {
                 value = promotionCode.promotion.giamToiDa;
             discount += value;
         }
-        if(paymentPromotion.value.length > 0 ) {
+        if (paymentPromotion.value.length > 0) {
             let totalTemp = totalPrice.value - discount;
             let promo = paymentPromotion.value.filter(promotion => cartCount.value >= promotion.soLuongToiThieu && totalTemp > promotion.giaTriToiThieu);
-            if(promo.length > 0) {
+            if (promo.length > 0) {
                 let max = {
-                    price:0,
+                    price: 0,
                     item: ""
                 }
-                promo.forEach(item=>{
-                                let current = item.giamTien + (item.phanTramGiam /100)* totalTemp;
-                                if(current > max.price){
-                                    max.item = item;
-                                    max.price = current;
-                                }
-                            })
-            myPaymentPromotion.value = max.item;
-            discount += max.price > max.item.giamToiDa ? max.item.giamToiDa : max.price;
+                promo.forEach(item => {
+                    let current = item.giamTien + (item.phanTramGiam / 100) * totalTemp;
+                    if (current > max.price) {
+                        max.item = item;
+                        max.price = current;
+                    }
+                })
+                myPaymentPromotion.value = max.item;
+                discount += max.price > max.item.giamToiDa ? max.item.giamToiDa : max.price;
             } else {
                 myPaymentPromotion.value = null;
             }
@@ -83,5 +96,5 @@ export const usePromotionStore = defineStore("promotion", () => {
             }
         })
     }
-    return { promotion, paymentPromotion, promotionCode, myPromotion, totalDiscount,myPaymentPromotion, checkPromotion, loadPromotionInstance, paymentPromotionInstance }
+    return { promotion, paymentPromotion, promotionCode, myPromotion, totalDiscount, myPaymentPromotion, checkPromotion, loadPromotionInstance, paymentPromotionInstance }
 });

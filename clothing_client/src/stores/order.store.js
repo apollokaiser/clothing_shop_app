@@ -8,7 +8,6 @@ export const useOrderStore = defineStore("order", () => {
     const khuyenMai = usePromotionStore()
     const {totalPrice} = storeToRefs(cart);
     const {totalDiscount, promotionCode} = storeToRefs(khuyenMai);
-    const promotion = ref(promotionCode.value)
     const address = ref("");
     const order = ref({
         tenNguoiNhan:"",

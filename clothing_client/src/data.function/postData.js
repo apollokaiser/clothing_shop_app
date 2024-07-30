@@ -1,5 +1,7 @@
 import ListCategory from '@/components/Admin/ListCategory.vue';
 import axios from '@/config/axios';
+import { storage } from '@/config/firebase.conf';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 
 /**
@@ -9,152 +11,345 @@ import axios from '@/config/axios';
  * @param {List<Cart>} deleteCart Danh sách các trang phục cần loại bỏ
  * @returns 
  */
-export const saveCart = async(userId, insertCart, deleteCart=[])=>{
+export const saveCart = async (userId, insertCart, deleteCart = []) => {
     const response = await axios.post("/gio-hang/luu-gio-hang", {
         maNguoiDung: userId,
         addCart: JSON.stringify(insertCart),
-        deleteCart:  JSON.stringify(deleteCart)  
+        deleteCart: JSON.stringify(deleteCart)
     })
-    if(response.status === 200) {
-        console.log(response);
+    if (response.status && response.status === 200) {
         return true;
     } else {
         return response;
     }
 }
-export const saveOrder = async(cartItem, cartDetail, orderDetail, user=null) =>{
-        let order = {
-            tenNguoiNhan: orderDetail.tenNguoiNhan,
-            sdtNguoiNhan: orderDetail.sdtNguoiNhan,
-            diaChiNguoiNhan: orderDetail.diaChiNguoiNhan,
-            ghiChu: "",
-            ngayNhan: orderDetail.ngayNhan,
-            tamTinh: orderDetail.tamTinh,
-            tongUuDai: orderDetail.tongUuDai,
-            tongThue: orderDetail.tamTinh - orderDetail.tongUuDai,
-            nguoiDung: !user ? null : user.uid,
-            phieuKhuyenMai:orderDetail.maKhuyenMai,
-            payment:"DIRECT"
+export const saveOrder = async (cartItem, cartDetail, orderDetail, user = null) => {
+    let order = {
+        tenNguoiNhan: orderDetail.tenNguoiNhan,
+        sdtNguoiNhan: orderDetail.sdtNguoiNhan,
+        diaChiNguoiNhan: orderDetail.diaChiNguoiNhan,
+        ghiChu: "",
+        ngayNhan: orderDetail.ngayNhan,
+        tamTinh: orderDetail.tamTinh,
+        tongUuDai: orderDetail.tongUuDai,
+        tongThue: orderDetail.tamTinh - orderDetail.tongUuDai,
+        nguoiDung: !user ? null : user.uid,
+        phieuKhuyenMai: orderDetail.maKhuyenMai,
+        payment: "DIRECT"
+    }
+    const listOrderDetail = [];
+    cartItem.forEach(item => {
+        let outfitPiece = null;
+        if (item.id == item.parentId) outfitPiece = cartDetail.find(outfitCart => outfitCart.id == item.parentId)
+        else {
+            let detail = cartDetail.find(outfitCart => outfitCart.id == item.parentId)
+            outfitPiece = detail.manhTrangPhucs.find(p => p.id == item.id);
         }
-        const listOrderDetail = [];
-        cartItem.forEach(item=>{
-            let detail = cartDetail.find(cart=> cart.id == item.id)
-            let giaTien = item.full ? detail.giaTronBo : detail.giaTien;
-            listOrderDetail.push({
+        listOrderDetail.push({
+            outfitSizeId: {
                 maTrangPhuc: item.id,
-                soLuong: Number(item.quantity),
                 maKichThuoc: item.size,
-                toanPhan: item.full,
-                giaTien: giaTien,
-                discount: item.discount,
-                khuyenMai: item.promotion,
-                tongTien: Number(giaTien * item.quantity - item.discount)
-            })
+            },
+            soLuong: Number(item.quantity),
+            giaTien: outfitPiece.giaTien,
+            discount: item.discount,
+            khuyenMai: item.promotion,
+            tongTien: Number(outfitPiece.giaTien * item.quantity - item.discount)
         })
-        order.chiTiet = listOrderDetail;
-        console.log(user);
-        if(user){
-            const response = await axios.post("/thanh-toan/thanh-toan-khach-hang", {
-                    order
-            })
-            if(response.status ==200) {
-                return response.data;
-            } else {
-                return response;
-            }
+    })
+    order.chiTiet = listOrderDetail;
+    if (user) {
+        const response = await axios.post("/thanh-toan/thanh-toan-khach-hang", {
+            order
+        })
+        if (response.status == 200) {
+            return response.data;
         } else {
-            const response = await axios.post("/thanh-toan/thanh-toan-tien-loi",{
-                order
-            })
-            console.log(response);
-            if(response.status ==200) {
-                return response.data;
-            } else {
-                return response;
-            }
+            return response;
         }
-    
+    } else {
+        const response = await axios.post("/thanh-toan/thanh-toan-tien-loi", {
+            order
+        })
+        console.log(response);
+        if (response.status == 200) {
+            return response.data;
+        } else {
+            return response;
+        }
+    }
+
 }
 
-export const sendEmailResetPass = async(email)=>{
+export const sendEmailResetPass = async (email) => {
     const response = await axios.get("/auth/reset-password?email=" + email);
     console.log(response);
-    if(response.status === 200) {
+    if (response.status === 200) {
         return response.data;
     } else {
         return null;
     }
 }
-export const resetPassword = async(email, newPassword, resetCode)=>{
+export const resetPassword = async (email, newPassword, resetCode) => {
     const response = await axios.post("/auth/reset-password", {
         email,
         newPassword,
-        oldPassword:"",
+        oldPassword: "",
         resetCode
     })
-    if(response.status === 200) {
+    if (response.status === 200) {
         return response.data;
     } else {
         return response.data;
     }
 }
-export const addAddress = async(address) =>{
-   const response = await axios.post('/user/add-address', address);
-   if(response.status === 200) {
-     return response.data;
-   } else {
-    return null;
-   }
+export const addAddress = async (address) => {
+    const response = await axios.post('/user/add-address', address);
+    if (response.status === 200) {
+        return response.data;
+    } else {
+        return null;
+    }
+}
+export const editAddress = async (address, updateDefault = false) => {
+    const response = await axios.post('/user/update-address', {
+        address,
+        updateDefault
+    });
+    console.log(response);
+    if (response.status === 200) {
+        return response.data;
+    } else {
+        return null;
+    }
 }
 
-export const deleteAddress = async(id) =>{
+export const deleteAddress = async (id) => {
     const response = await axios.delete(`/user/delete-address?id=${id}`);
-    if(response.status === 200) {
-      return true;
+    if (response.status === 200) {
+        return true;
     } else {
-     return false;
+        return false;
     }
 }
-export const setDefault = async(id, setDefault)=>{
+export const setDefault = async (id, setDefault) => {
     const response = await axios.put(`/user/set-default-address`, {
         id,
         setDefault
     });
-    if(response.status === 200) {
+    if (response.status === 200) {
         return true;
     }
     return false;
 }
 
-export const addPromotion = async(data, ids) =>{
+export const addPromotion = async (data, ids) => {
     const response = await axios.post("/khuyen-mai/save-promotion", {
-        khuyenMai:data,
+        khuyenMai: data,
         ids
     })
     console.log(response);
-    if(response.status === 200) {
+    if (response.status === 200) {
         return response.data.data.promotion_id ? response.data.data.promotion_id : null;
     } else {
         return false;
     }
 
 }
-export const deletePromotion = async(id)=>{
+export const deletePromotion = async (id) => {
     const response = await axios.delete(`/khuyen-mai/delete-promotion?id=${id}`);
-    if(response.status === 200) {
+    if (response.status === 200) {
         return response.data;
     } else {
         return response.data;
     }
 }
-export const updatePromotion =  async(data, ids) =>{
-    const response = await axios.post("/khuyen-mai/update-promotion", {
-        khuyenMai:data,
+export const updatePromotion = async (data, ids) => {
+    const response = await axios.put("/khuyen-mai/update-promotion", {
+        khuyenMai: data,
         ids
     })
     console.log(response);
-    if(response.status === 200) {
-        return response.data.data.promotion_id;
+    if (response.status === 200) {
+        return response.data;
+    } else {
+        return false;
+    }
+
+}
+export const addOutfit = async (data, images) => {
+    if (images.length == 0) return null;
+    let result = await uploadFiles(images);
+    if (!result) return null;
+    data.hinhAnhs = result;
+    const response = await axios.post('/trang-phuc/them-trang-phuc', { trangPhuc: data });
+    if (response?.status === 200) {
+        return response.data;
+    } else {
+        return null;
+    }
+}
+const uploadFiles = async (images) => {
+    if (!images.length) return;
+    const uploadedFilesRefs = [];
+    let imagesLink = [];
+    try {
+        for (const file of images) {
+            const storageReference = ref(storage, `outfit/${file.name}`);
+            const metadata = {
+                contentType: file.type
+            };
+            const snapshot = await uploadBytes(storageReference, file, metadata);
+            uploadedFilesRefs.push(storageReference);
+            const downloadURL = await getDownloadURL(snapshot.ref);
+            imagesLink.push(downloadURL);
+            console.log('File available at', downloadURL);
+        }
+        console.log('All files uploaded successfully');
+        return imagesLink;
+    } catch (error) {
+        console.error('Upload failed', error);
+        const deletePromises = uploadedFilesRefs.map(ref => deleteObject(ref));
+        await Promise.all(deletePromises);
+        console.log('All uploaded files deleted due to an error');
+        return null;
+    }
+};
+export const deleteOutfit = async (id) => {
+    const response = await axios.delete(`/trang-phuc/xoa-trang-phuc?id=${id}`);
+    console.log(response);
+    if (response.status === 200) {
+        return response.data;
+    } else {
+        return null;
+    }
+}
+export const lockOutfit = async (ids) => {
+    const response = await axios.post('/trang-phuc/ngung-cho-thue', { ids });
+    if (response.status === 200) {
+        return response.data;
+    } else {
+        return null;
+    }
+}
+export const updateOutfit = async (data, uploadImg = null, removeImage = null) => {
+    if (uploadImg && uploadImg.length != 0) {
+        let result = await uploadFiles(uploadImg);
+        if (!result) return null;
+        data.hinhAnhs = [...data.hinhAnhs, ...result];
+    }
+    if (removeImage && removeImage.length != 0) {
+        data.hinhAnhs = data.hinhAnhs.filter(item => !removeImage.includes(item));
+        removeImage.forEach(item => {
+            deleteFileByUrl(item).then();
+        })
+    }
+    if (!uploadImg && !removeImage) {
+        data.hinhAnhs = [];
+    }
+    console.log(data);
+    const response = await axios.put('/trang-phuc/cap-nhat-trang-phuc', { trangPhuc: data });
+    console.log(response);
+    if (response.status === 200) {
+        return response.data;
+    } else {
+        return null;
+    }
+}
+export async function deleteFileByUrl(fileUrl) {
+    try {
+        // Tách đường dẫn từ URL
+        const baseUrl = 'https://firebasestorage.googleapis.com/v0/b/';
+        const regex = new RegExp(`${baseUrl}(.*?)/o/(.*?)(\\?.*)?$`);
+        const match = fileUrl.match(regex);
+
+        if (!match || match.length < 3) {
+            throw new Error('Invalid Firebase Storage URL');
+        }
+
+        const encodedPath = match[2];
+        const filePath = decodeURIComponent(encodedPath);
+
+        // Tạo tham chiếu tới file
+        const fileRef = ref(storage, filePath);
+
+        // Xóa file
+        await deleteObject(fileRef);
+        console.log('File deleted successfully');
+    } catch (error) {
+        console.error('Error deleting file:', error);
+    }
+}
+
+export const insertStaff = async (info) => {
+    const response = await axios.post("/admin/staff/add-staff", info)
+    if (response.status === 200) {
+        return response.data;
+    }
+    return null;
+}
+export const removeStaff = async (id) => {
+    const response = await axios.delete(`/admin/staff/delete-staff?id=${id}`)
+    if (response.status === 200) {
+        return response.data;
+    }
+    return null;
+}
+export const lockStaff = async (id) => {
+    const response = await axios.get(`/admin/staff/lock-staff?id=${id}`)
+    if (response.status === 200) {
+        return response.data;
+    }
+    return null;
+}
+export const unclockStaff = async (id) => {
+    const response = await axios.get(`/admin/staff/unlock-staff?id=${id}`)
+    if (response.status === 200) {
+        return response.data;
+    }
+    return null;
+}
+export const updateStaff = async (info, id) => {
+    const response = await axios.post(`/admin/staff/update-staff`, {
+        id,
+        tenNguoiDung: info.tenNguoiDung,
+        email: info.adminEmail,
+        sdt: info.sdt
+    })
+    console.log(response);
+    if (response.status === 200) {
+        return response.data;
+    }
+    return null;
+}
+export const addDeposit = async (datCoc) => {
+    const response = await axios.post(`/don-thue/dat-coc`, datCoc)
+    console.log(response);
+    if (response.status === 200) {
+        return response.data;
+    }
+    return null;
+}
+export const updateStatusOrder = async (id, status) => {
+    const response = await axios.get(`/don-thue/change-status?id=${id}&status=${status}`)
+    console.log(response);
+    if (response.status === 200) {
+        return response.data.data.trangThai;
+    }
+    return null;
+}
+export const completedOrder = async (data) => {
+    const response = await axios.post(`/don-thue/xuat-phieu-hoan-tra`, data)
+    console.log(response);
+    if (response.status === 200) {
+        return response.data.data.trangThai;
+    }
+    return null;
+}
+export const changeRole = async (data) => {
+    const response = await axios.post("/admin/staff/change-role", data);
+    if (response.status === 200 && response.data.data == null) {
+        return true;
     } else {
         return false;
     }

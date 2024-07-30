@@ -212,11 +212,10 @@ const router = useRouter();
 const requestPending = ref(false);
 const accessPending = (admin=false) => {
   requestPending.value = true;
-  console.log(admin);
   setTimeout(() => {
     requestPending.value = false;
     if (admin==true) {
-      router.push({name:'admin'})
+      router.push({name:'content'})
     } else {
       router.push("/")
     }

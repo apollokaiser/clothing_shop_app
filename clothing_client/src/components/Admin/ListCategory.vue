@@ -13,43 +13,83 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useAdminStore } from '@/stores/admin.store';
+import { storeToRefs } from 'pinia';
 const admin = useAdminStore()
+const {choosedCategory} = storeToRefs(admin)
 const props = defineProps({
     item: {
         type: Object,
         required: true
+    },
+    single:{
+        type: Boolean,
+        required: false
     }
 })
+const init = ref(false);
 let chooseTimer = null;
 const choose = ref(false)
 const show = ref(false);
 const hasSubMenu = computed(() => {
     return props.item.children && props.item.children.length > 0;
 })
+onBeforeMount(()=>{
+    if(choosedCategory.value.length >0) {
+        init.value = true;
+        choose.value = choosedCategory.value.some(item=>item.maLoai == props.item.maLoai)
+    }
+})
+watch(choosedCategory, value =>{
+    if(value.length > 0) {
+        choose.value = value.some(item=>item.maLoai == props.item.maLoai)
+    } else {
+        choose.value = false;
+    }
+ 
+}, {deep:true})
 const showCollapse = ()=>{
     if(hasSubMenu.value)
     show.value = !show.value;
 }
 const chooseCategory = () =>{
+    
     if(chooseTimer){
         clearTimeout(chooseTimer);
         chooseTimer = null;
         return;
     } 
     chooseTimer = setTimeout(()=>{
-        choose.value = !choose.value;
-        chooseTimer = null;
+        if(props.single && choosedCategory.value.length > 0) { //kiểm tra xem đang chọn cho trang phục và đã có chọn chưa
+            //nếu đã có chọn rồi
+            if(!choose.value == true) { // nếu đang muốn chọn thêm, tức là trang thái choose trước đó đang chưa chọn (false)
+                alert("chỉ chọn 1")
+            } else {
+                init.value = false;
+                choose.value = !choose.value;
+                chooseTimer = null;
+            }
+        } else {
+            init.value = false;
+            choose.value = !choose.value;
+            chooseTimer = null;
+        }
     },200)
 }
 watch(choose, value=>{
-    if(value){
-        admin.pushCategory(props.item.maLoai)
-    } else {
-        admin.removeCategory(props.item.maLoai)
+    //kiểm tra xem có phải là khởi tạo ban đầu không --> ko làm gì cả
+    if(!init.value){ 
+        if(value==true){
+            if(choosedCategory.value.length > 0 && props.single ==true) {
+               alert("Chỉ chọn 1")
+            }else 
+                admin.pushCategory(props.item)
+        } else {
+            if(props.single ==true) admin.resetCategory();
+           else admin.removeCategory(props.item.maLoai);
     }
- 
+}
 })
 </script>
 <style lang="css" scoped>

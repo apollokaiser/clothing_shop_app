@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { ref, watch, computed } from 'vue';
 import { decode } from '@/auth.function/JwtDecoder';
 import { login, refreshAccessToken, getInfo, googleSignIn, updateUser } from '@/auth.function/auth';
-import { addAddress, deleteAddress, setDefault } from '@/data.function/postData';
+import { addAddress, deleteAddress, setDefault, editAddress } from '@/data.function/postData';
 import { ROLES } from '@/utils/constant';
 import { useRouter } from 'vue-router';
 export const authStore = defineStore("authStore", () => {
@@ -77,7 +77,7 @@ export const authStore = defineStore("authStore", () => {
         if (claims && claims != 999) {
             user.value.uid = claims.uid;
             user.value.email = claims.sub;
-            user.value.name = claims.name || "Chưa cập nhật";
+            user.value.name = claims.name || null;
             user.value.scope = claims.scope.split(" ");
             isLoggedIn.value = true;
         }
@@ -104,7 +104,7 @@ export const authStore = defineStore("authStore", () => {
             //TODO: optimize here
             user.value.email = userInfo.email;
             let claims = decode(accessToken.value);
-            user.value.name = claims.name || "Chưa cập nhật";
+            user.value.name = claims.name || null;
             user.value.uid = claims.uid;
             user.value.scope = claims.scope.split(" ");
             isLoggedIn.value = true;
@@ -153,7 +153,7 @@ export const authStore = defineStore("authStore", () => {
                 let claims = decode(accessToken.value);
                 user.value.uid = claims.uid;
                 user.value.email = claims.sub;
-                user.value.name = claims.name || "Chưa cập nhật";
+                user.value.name = claims.name || null;
                 user.value.scope = claims.scope.split(" ");
                 isLoggedIn.value = true;
                 localStorage.setItem("accessToken", accessToken.value);
@@ -170,6 +170,34 @@ export const authStore = defineStore("authStore", () => {
             if (address.isDefault)
                 user.value.address.forEach(item => item.isDefault = false);
             user.value.address.push(response.data.address);
+            return true;
+        } else return false;
+    }
+    const updateAdress = async (address) => {
+        let info = {
+            id: address.id,
+            name: address.tenDiaChi,
+            address: address.diaChi,
+            isDefault: address.isDefault,
+            provinceId: address.detail.provinceId,
+            districtId: address.detail.districtId,
+            wardId: address.detail.wardId
+        }
+        const response = await editAddress(info);
+        if (response && response.status == 200) {
+            let index = user.value.address.findIndex(item=> item.id ===info.id);
+            if(index !=-1) {
+                user.value.address[index] = address;
+            }
+            if (address.isDefault){
+                user.value.address.forEach(item => {
+                    if(item.id != info.id)
+                    item.isDefault = false
+                });
+            }
+            user.value.address.forEach(item => {
+                if (item.id == address.id) item.isDefault = address.isDefault;
+            })
             return true;
         } else return false;
     }
@@ -209,7 +237,8 @@ export const authStore = defineStore("authStore", () => {
         getUserInfo,
         addNewAddress,
         deleteUserAddress,
-        setDefaultAddress
+        setDefaultAddress,
+        updateAdress
     }
 
 })

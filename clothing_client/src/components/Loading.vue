@@ -1,5 +1,9 @@
 <template>
- <div class="loader"></div>
+<div class="load-container">
+ <div class="loader">
+ <div class="message">Đang xử lý ...</div>
+ </div>
+</div>
 </template>
 
 <script setup>
@@ -7,6 +11,15 @@
 </script>
 
 <style scoped>
+.message {
+    position: absolute;
+    top: -150%;
+    left:-50%;
+    font-size: 1.2em;
+    width: 110px;
+    color: #fff;
+    transform: rotate(-165deg);
+}
 .loader {
     position: relative;
     width: 2.5em;

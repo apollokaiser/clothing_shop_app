@@ -18,6 +18,7 @@
   "homepage": "https://github.com/apollokaiser/clothing_shop_app#readme",
   "dependencies": {
     "docx": "^8.5.0",
-    "jwt-decode": "^4.0.0"
+    "jwt-decode": "^4.0.0",
+    "vuetify": "^3.6.13"
   }
 }

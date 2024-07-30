@@ -4,6 +4,8 @@ import { authStore } from './stores/user.store';
 import { useCartStore } from './stores/cart.store';
 import { usePromotionStore } from './stores/promotion.store';
 import { useResource } from './stores/resource.store';
+import {useInitStore} from './stores/init.store';
+
 const auth = authStore();
 const promotion = usePromotionStore();
 const resource = useResource();
@@ -13,6 +15,8 @@ auth.getUser()
 resource.loadPromotion();
 const cart = useCartStore();
 cart.loadCartInstance();
+const init = useInitStore();
+init.loadInitInstance();
 </script>
 
 <template>

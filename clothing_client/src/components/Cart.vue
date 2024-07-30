@@ -40,6 +40,23 @@ watch(
     deep: true,
   }
 );
+const checkAllCart = ref(true);
+watch(checkAllCart, value =>{
+  if(value && cartItems.value.some(item=> item.check == false)) {
+    cartItems.value.forEach((item) => (item.check = value));
+  } if(!value && !cartItems.value.some(item=> item.check == false)){
+    cartItems.value.forEach((item) => (item.check = value));
+  }
+})
+watch(cartItems, value =>{
+  if(value.some(item=> item.check == false)) {
+    checkAllCart.value = false;
+  } else {
+    checkAllCart.value = true;
+  }
+}, {
+  deep: true,
+})
 const checkCode = () => {
   if (promotionCode.value.code && promotionCode.value.code != "") {
     requestPending.getCode = true;
@@ -101,11 +118,10 @@ const confirmPromotionCode = () => {
           <div class="cart-option">
             <div class="cart-select-all">
               <div class="cntr">
-                <input
+                <input v-model="checkAllCart"
                   class="hidden-xs-up"
                   id="cbx"
                   type="checkbox"
-                  checked=""
                 />
                 <label class="cbx" for="cbx"></label>
               </div>
@@ -151,18 +167,17 @@ const confirmPromotionCode = () => {
                 <span>{{ ticketCodeValue }}</span>
                 <i
                   @click="promotionCode.check = false"
-                  class="fa fa-times"
-                  aria-hidden="true"
+                  class="fa-regular fa-circle-xmark"
                 ></i>
               </div>
             </div>
           </div>
-          <div
+          <!-- <div
             class="promotion-footer d-flex justify-content-end align-items-baseline"
           >
             <div>Xem các ưu đãi khác</div>
             <div>Tất cả</div>
-          </div>
+          </div> -->
         </div>
 
         <div class="payment-main">
@@ -492,6 +507,7 @@ const confirmPromotionCode = () => {
   top: -4px;
   right: 2%;
   font-weight: 200;
+  font-size: 20px;
   transform: scale(0.8);
   color: #475569;
   z-index: 12;

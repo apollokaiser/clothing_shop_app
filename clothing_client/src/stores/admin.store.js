@@ -2,22 +2,41 @@ import { defineStore } from "pinia"
 import { ref } from "vue"
 
 export const useAdminStore = defineStore("admin", ()=>{
-    const categoryPromotion = ref([])
-    
+    const choosedCategory = ref([])
+    const choosedOutfit = ref([]);
     const pushCategory = (id) =>{
-        categoryPromotion.value.push(id)
+        choosedCategory.value.push(id)
+    }
+    const pushOutfit = (id) =>{
+        choosedOutfit.value.push(id)
     }
     const removeCategory = (id)=>{
-        if(categoryPromotion.value.length >0)
-        categoryPromotion.value = categoryPromotion.value.filter(item=>item!==id)
+        if(choosedCategory.value.length >0)
+        choosedCategory.value = choosedCategory.value.filter(item=>item.maLoai!=id)
+    }
+    const removeOutfit = (id)=>{
+        
+        if(choosedOutfit.value.length >0)
+        choosedOutfit.value = choosedOutfit.value.filter(item=>item!=id)
     }
     const resetCategory = () =>{
-        categoryPromotion.value = []
+        choosedCategory.value = []
+    }
+    const resetOutfit = () =>{
+        choosedOutfit.value = []
+    }
+    const setAllOutfit =(ids)=>{
+        choosedOutfit.value = ids;
     }
     return {
-        categoryPromotion,
+        choosedCategory,
         pushCategory,
         removeCategory,
-        resetCategory
+        resetCategory,
+        choosedOutfit,
+        pushOutfit,
+        removeOutfit,
+        resetOutfit,
+        setAllOutfit
     }
 })

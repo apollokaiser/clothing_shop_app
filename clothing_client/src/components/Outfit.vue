@@ -1,6 +1,5 @@
 <template>
-   
-    <div class="product-container col-lg-2 col-md-6 col-6">
+    <div class="product-container col-lg-2 col-md-6 col-6 my-2">
         <div class="propduct-main">
             <div class="product-proview-image" :title="props.outfit.tenTrangPhuc">
                 <div class="image" :class="{'static-img':staticTransition}">
@@ -45,6 +44,9 @@ const staticTransition = computed(() => props.outfit.hinhAnhs?.length == 1)
 
 <style scoped>
 .product-container {
+    max-width: 200px;
+    min-height: 260px;
+    max-height: 380px;
     transition: all 0.5s ease-in-out;
     border-radius: 10px;
 }
@@ -52,9 +54,18 @@ const staticTransition = computed(() => props.outfit.hinhAnhs?.length == 1)
 .product-container:hover {
     box-shadow: 0px 0px 10px 0px rgba(0, 0, 0, 0.2);
 }
+.propduct-main{
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-direction: column;
+}
 
 .propduct-main .product-proview-image img {
     padding: 10px;
+    object-fit: cover;
     transition: all 0.5s ease;
 }
 
@@ -76,6 +87,7 @@ const staticTransition = computed(() => props.outfit.hinhAnhs?.length == 1)
 .image {
     display: flex;
     flex-wrap: nowrap;
+    height: 300px;
 }
 
 .propduct-main .product-proview-image:hover img {
@@ -97,7 +109,7 @@ const staticTransition = computed(() => props.outfit.hinhAnhs?.length == 1)
     padding: 5px 12px;
     text-align: left;
     font-size: 15px;
-    font-weight: 400;
+    font-weight: 500;
     white-space: initial;
     overflow: hidden;
     -webkit-line-clamp: 2;
@@ -115,6 +127,11 @@ const staticTransition = computed(() => props.outfit.hinhAnhs?.length == 1)
 .product-action>div {
     flex: 1 1 auto;
     font-size: 14px;
+}
+.product-action .product-price {
+    font-weight: bold;
+    color: #ff0084;
+    margin-right: 10px;
 }
 .product-add-cart span{
    font-size: 12px;

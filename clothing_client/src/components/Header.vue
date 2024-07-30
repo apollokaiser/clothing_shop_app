@@ -47,14 +47,14 @@
             </div>
             <div v-if="isLogin" class="user-account">
               <span class="fst-italic">{{ user.email }}</span>
-              <span>{{ user.name }}</span>
+              <span>{{ user.name || "Chưa cập nhật" }}</span>
             </div>
           </div>
           <div v-if="isLogin" class="account-action">
             <Link
               :to="{
                 name: 'account_profile',
-                params: { uid: user.uid, username: convertToSlug(user.name) },
+                params: { uid: user.uid, username: convertToSlug(user.name) ||'khach-hang' },
               }"
               ><span>Tài khoản</span></Link
             >
@@ -95,10 +95,11 @@ import { ref, computed } from "vue";
 import { authStore } from "@/stores/user.store";
 import { storeToRefs } from "pinia";
 import Link from "@/components/Link.vue";
-import Address from "@/components/Address.vue";
+// import Address from "@/components/Address.vue";
 import { convertToSlug } from "@/utils/util.function";
 import {useRoute, useRouter} from 'vue-router'
 import { useCartStore } from "@/stores/cart.store";
+import { defineAsyncComponent } from 'vue'
 const route = useRoute();
 const router = useRouter();
 const auth = authStore();
@@ -130,6 +131,16 @@ const searchOutfit = ()=>{
 // //     }, 2000)
 // // })
 // const slogan = ref(["An khang", "Thịnh vượng", "Vạn sự như ý"]);
+
+const Address = defineAsyncComponent({
+  loader: () => import("@/components/Address.vue"),
+  delay: 2000,
+  errorComponent: () => {
+    return '<div>Error loading Address component</div>';
+  },
+}
+  
+)
 </script>
 
 <style scoped>

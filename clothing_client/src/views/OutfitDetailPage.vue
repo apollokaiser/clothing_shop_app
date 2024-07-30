@@ -1,20 +1,43 @@
 <script setup>
 import Outfit from "@/components/Outfit.vue";
-import { onBeforeMount,reactive, onMounted, ref, toRaw} from "vue";
-import { getOutFitDetail } from "@/data.function/getData";
+import { onBeforeMount, ref, computed, watch} from "vue";
+import { getOutFitDetail,getRelateOutfit,getAttenttion } from "@/data.function/getData";
 import Link from "@/components/Link.vue";
+import Attention from "@/components/Attention.vue";
 import OutfitDetail from "@/components/OutfitDetail.vue";
-const outfit = ref("");
+import { useResource } from '@/stores/resource.store';
+import { useInitStore } from "@/stores/init.store";
+import { storeToRefs } from "pinia";
+const init = useInitStore();
+const resource = useResource();
+const {outfit, attention} = storeToRefs(init)
+const thisCategory = computed(()=>{
+    if(resource.getCategory.length >0)
+    return resource.getCategory.find(item=> item.maLoai ==outfits.value.theLoai)?.tenLoai;
+    else return "";
+})
+const outfits = ref("");
 const props = defineProps({
     id:{
         type: String,
         required: true,
     }
 });
-onBeforeMount(() => {
-    getOutFitDetail(props.id).then((res) => {
-        outfit.value = res;
-    });
+const relateOutfit = ref([]);
+const ettentionOutfit = ref([]);
+onBeforeMount(async() => {
+   const response = await getOutFitDetail(props.id);
+    outfits.value = response;
+const result = await getRelateOutfit(response.theLoai)
+    relateOutfit.value = result;
+    if(init.getAttenttion.length > 0 && init.getAttenttionOutfit.length >0 ) {
+        ettentionOutfit.value = init.getAttenttionOutfit;
+    } else if(init.getAttenttion.length > 0 && init.getAttenttionOutfit.length == 0) {
+        getAttenttion(init.getAttenttion).then(response=> {
+           outfit.value = response;
+            ettentionOutfit.value = response;
+        })
+    }
 });
 </script>
 
@@ -24,14 +47,14 @@ onBeforeMount(() => {
             <div class="container breadcumb">
                 <Link to="/"><span>Trang chủ</span></Link>
                 <span class="mx-1">/</span>
-                <span>Sand Gợi Ý Outfit Hiện Đại Phối Sẵn</span>
+                <span>{{ thisCategory }}</span>
                 <span class="mx-1">/</span>
                 <span>{{
-                    outfit.tenTrangPhuc || "Outfit Phối Sẵn - (Quần Bạc Bóng phối Áo Ống Bạc)"
+                    outfits.tenTrangPhuc
                 }}</span>
             </div>
         </div>
-            <OutfitDetail v-if="outfit" :id="props.id" :details="outfit" :quickview="false"/>
+            <OutfitDetail v-if="outfits" :id="props.id" :details="outfits" :quickview="false"/>
         <div class="container">
             <div class="outfit-description question">
                 <div class="question-box">
@@ -86,24 +109,12 @@ onBeforeMount(() => {
         <div class="relative-outfit container">
             <div class="relative-header">Sản phẩm liên quan</div>
             <div class="outfit-container">
-                <Outfit :outfit="outfit"></Outfit>
-                <Outfit :outfit="outfit"></Outfit>
-                <Outfit :outfit="outfit"></Outfit>
-                <Outfit :outfit="outfit"></Outfit>
-                <Outfit :outfit="outfit"></Outfit>
-                <Outfit :outfit="outfit"></Outfit>
+                <Outfit v-for="outfit in relateOutfit" :key="outfit.id" :outfit="outfit"></Outfit>
             </div>
         </div>
         <div class="history-outfit container">
             <div class="history-header">Sản phẩm đã xem</div>
-            <div class="outfit-container">
-                <Outfit :outfit="outfit"></Outfit>
-                <Outfit :outfit="outfit"></Outfit>
-                <Outfit :outfit="outfit"></Outfit>
-                <Outfit :outfit="outfit"></Outfit>
-                <Outfit :outfit="outfit"></Outfit>
-                <Outfit :outfit="outfit"></Outfit>
-            </div>
+            <Attention v-if="ettentionOutfit.length >0" :outfits="ettentionOutfit"></Attention>
         </div>
     </div>
 </template>
@@ -287,50 +298,6 @@ onBeforeMount(() => {
     margin-top: 30px;
 }
 
-/* .number-control {
-    display: flex;
-    align-items: center;
-}
-
-.number-left::before,
-.number-right::after {
-    content: attr(data-content);
-    background-color: #fffafa;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 0.25rem;
-    border: 1px solid #a4aaaf;
-    width: 25px;
-    color: black;
-    transition: background-color 0.3s;
-    cursor: pointer;
-}
-
-.number-left::before {
-    content: "-";
-}
-
-.number-right::after {
-    content: "+";
-}
-
-.number-quantity {
-    text-align: center;
-    padding: 0.25rem;
-    border: 0;
-    width: 70px;
-    -moz-appearance: textfield;
-    border-top: 1px solid #a4aaaf;
-    border-bottom: 1px solid #a4aaaf;
-}
-
-.number-left:hover::before,
-.number-right:hover::after {
-    background-color: #666666;
-    color: #fff;
-} */
-
 .outfit-add-cart {
     margin-top: 50px;
     flex-wrap: wrap;
@@ -440,6 +407,6 @@ onBeforeMount(() => {
 .outfit-container {
     display: flex;
     flex-wrap: wrap;
-    justify-content: space-evenly;
+    justify-content:flex-start;
 }
 </style>

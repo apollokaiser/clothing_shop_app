@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onBeforeMount, ref, watch } from 'vue';
 import Link from './Link.vue';
+import { Toast } from '@/utils/notification';
 import { useCartStore } from '@/stores/cart.store';
 import { usePromotionStore } from '@/stores/promotion.store';
 import { storeToRefs } from 'pinia';
@@ -10,6 +11,7 @@ const cart = useCartStore()
 const khuyenMai = usePromotionStore();
 const { promotion } = storeToRefs(khuyenMai);
 const { cartDetail } = storeToRefs(cart)
+// NOTE: props.item = cartItem
 const props = defineProps({
     item: {
         type: Object,
@@ -17,22 +19,33 @@ const props = defineProps({
     }
 })
 const thisCartItem = ref("");
+const thisPiece = computed(() => {
+    if (thisCartItem.value.id == thisCartItem.value.parentId) return thisCartDetail.value;
+    if (thisCartDetail.value) return thisCartDetail.value.manhTrangPhucs.find(size => size.id == props.item.id);
+    return null;
+})
 const thisCartDetail = computed(() => {
-    return cartDetail.value?.find(item => item.id == props.item.id);
+    return cartDetail.value?.find(item => item.id == props.item.parentId);
 })
 const thisPromotion = ref("");
 onBeforeMount(() => {
-    thisCartItem.value = props.item
+    thisCartItem.value = Object.assign({}, props.item);
+})
+const thisSize = computed(() => {
+    if (thisPiece.value) return thisPiece.value.kichThuocs.find(size => size.maKichThuoc == props.item.size);
+    return null;
 })
 const quantityHandle = {
     add: () => {
-        if (thisCartItem.value.quantity < thisCartDetail.value.soLuong) {
+        if (thisCartItem.value.quantity < thisSize.value?.soLuong) {
             thisCartItem.value.quantity++;
         } else {
-            alert("Số lượng trang phục không đủ !")
-            thisCartItem.value.quantity = thisCartDetail.value.soLuong;
+            Toast.fire({
+                icon: 'error',
+                title: 'Không thể thêm'
+            })
+            thisCartItem.value.quantity = thisSize.value?.soLuong;
         }
-
     },
     reduce: () => {
         if (thisCartItem.value.quantity > 1) {
@@ -43,9 +56,11 @@ const quantityHandle = {
     }
 }
 watch(promotion, (value) => {
-    let myPromotion = khuyenMai.checkPromotion(thisCartDetail.value.theLoai);
-    if (myPromotion) {
-        thisPromotion.value = myPromotion;
+    if (value) {
+        let myPromotion = khuyenMai.checkPromotion(thisCartDetail.value.theLoai);
+        if (myPromotion) {
+            thisPromotion.value = myPromotion;
+        }
     }
 }, {
     deep: true,
@@ -59,109 +74,125 @@ const activePromotion = computed(() => {
         props.item.promotion = thisPromotion.value.maKhuyenMai;
         return true;
     }
-    if (thisPromotion.value.soLuongToiThieu > 0) {
-        if (thisCartItem.value.quantity >= thisPromotion.value.soLuongToiThieu) {
-            props.item.promotion = thisPromotion.value.maKhuyenMai;
-            return true;
-        } else {
-            props.item.promotion = null;
-            return false;
-        }  
-    } if (thisPromotion.value.giaTriToiThieu > 0) {
-        if (thisCartDetail.value.giaTien * thisCartItem.value.quantity >= thisPromotion.value.giaTriToiThieu) {
-            props.item.promotion = thisPromotion.value.maKhuyenMai;
-            return true;
-        } else{
-            props.item.promotion = null;
-            return false;
-        } 
+    if (thisCartItem.value.quantity > thisPromotion.value.soLuongToiThieu && thisPiece.value.giaTien * thisCartItem.value.quantity >= thisPromotion.value.giaTriToiThieu) {
+        props.item.promotion = thisPromotion.value.maKhuyenMai;
+        return true;
+    } else {
+        props.item.validPromoCode = thisPromotion.value.maKhuyenMai;
+        props.item.promotion = null;
+        return false;
     }
-    return false;
 })
 const price = computed(() => {
-    let giaTien = 0;
-    if(thisCartItem.value.full) giaTien = thisCartDetail.value.giaTronBo;
-    else giaTien = thisCartDetail.value.giaTien;
+    let giaTien = thisPiece.value.giaTien;
     let tamTinh = giaTien * thisCartItem.value.quantity;
     let price = tamTinh;
     if (activePromotion.value) {
-        if (thisPromotion.value.giaTriToiThieu > 0) {
-            price = thisPromotion.value.giamTien > 0 ? price - thisPromotion.value.giamTien : (thisPromotion.value.phanTramGiam / 100) * price;
-        }
-        if (thisPromotion.value.soLuongToiThieu > 0) {
-            price = thisPromotion.value.giamTien > 0 ? price - thisPromotion.value.giamTien : (thisPromotion.value.phanTramGiam / 100) * price;
-        }
+        price = price - thisPromotion.value.giamTien - (thisPromotion.value.phanTramGiam / 100) * price;
     }
     props.item.discount = tamTinh - price;
     return price;
 })
-const originPrice = computed(()=>{
-    let giaTien = 0;
-    if(props.item.check) giaTien = thisCartDetail.value.giaTronBo;
-    else giaTien = thisCartDetail.value.giaTien;
-    return giaTien * thisCartItem.value.quantity;
+const originPrice = computed(() => {
+    return thisPiece.value.giaTien * thisCartItem.value.quantity;
 })
 const discountTagValue = computed(() => {
     if (activePromotion.value) {
         return thisPromotion.value.giamTien > 0 ? shortCurrency(thisPromotion.value.giamTien) : thisPromotion.value.phanTramGiam + "%";
     }
 })
-watch(() => thisCartItem.value.size, (value, oldValue) => {
-    if (oldValue) {
-        cart.changeCartItemSize(thisCartItem.value, oldValue);
+const disabledSize = computed(() => {
+    if (thisPiece.value){
+        return thisPiece.value.kichThuocs.filter(size => size.soLuong == 0).map(size => size.maKichThuoc);
     }
+})
+watch(() => thisCartItem.value.size, () => {
+        cart.changeCartItemSize(thisCartItem.value, props.item.size);
 }
 )
-watch(() => thisCartItem.value.quantity, (value, oldValue) => {
+watch(()=>thisCartItem.value.id, (newVal)=>{
+    if (newVal != props.item.id) 
+        cart.changeCartItemId(thisCartItem.value, props.item.id, props.item.size);
+})
+watch(() => thisCartItem.value.quantity, (oldValue) => {
     if (oldValue) {
         cart.addCart(thisCartItem.value, null, true);
     }
 }
 )
 const removeCartItem = () => {
-    cart.removeCart(thisCartItem.value.id, thisCartItem.value.size, thisCartItem.value.full);
+    cart.removeCart(thisCartItem.value.id, thisCartItem.value.size);
 }
-const hasSize = computed(() => thisCartDetail.value.kichThuocs.length > 0)
-const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.value.size + "-" + thisCartItem.value.full)
+const hasSize = computed(() => {
+    if (thisPiece.value)
+        return thisPiece.value.kichThuocs[0] != "NONE";
+    return false;
+})
+const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.value.size)
 </script>
 
 <template>
     <div class="cart-item mb-2">
         <!--UPDATED: đã chỉnh sửa-->
-            <div v-if="activePromotion" class="discount-tag">
-                <div class="discount-tag-img">
-                    <img src="/images/discount-tag.png" alt="">
-                    <div class="discount-tag-value">-{{ discountTagValue }}</div>
-                </div>
+        <div v-if="activePromotion" class="discount-tag">
+            <div class="discount-tag-img">
+                <img src="/images/discount-tag.png" alt="">
+                <div class="discount-tag-value">-{{ discountTagValue }}</div>
             </div>
+        </div>
         <div class="cart-item-choose">
             <div class="cntr">
-                <input v-model="props.item.check" class="hidden-xs-up radio-check" :id="chooseRadio" type="checkbox" :checked="props.item.check">
+                <input :disabled="disabledSize.includes(props.item.size)" v-model="props.item.check" class="hidden-xs-up radio-check" :id="chooseRadio" type="checkbox"
+                    :checked="props.item.check">
                 <label class="cbx" :for="chooseRadio"></label>
             </div>
         </div>
         <div class="cart-item-img">
             <div class="cart-img-preview">
-                <img :src="thisCartDetail.hinhAnhs[0]" :alt="thisCartDetail.tenTrangPhuc">
+                <img :src="thisCartDetail.hinhAnh" :alt="thisCartDetail.tenTrangPhuc">
             </div>
         </div>
         <div class="cart-item-info col-sm-7">
             <div class="cart-item-name">
-                <h3>
+                <h3 :class="{'text-decoration-line-through': disabledSize.includes(props.item.size),
+                'text-muted':disabledSize.includes(props.item.size)}">
                     <Link to="/product-detail">
-                    <span>{{ thisCartDetail.tenTrangPhuc }}</span>
+                    <span> {{ thisCartItem.id }} - {{ thisCartDetail.tenTrangPhuc }} </span>
                     </Link>
                 </h3>
+                <span class="text-danger" v-if="disabledSize.includes(props.item.size)"> (tạm hết)</span>
             </div>
             <div class="cart-item-size col-sm-10">
                 <span v-if="hasSize">Kích thước :
                     <select v-model="thisCartItem.size">
-                        <option v-for="size in sortSizes(thisCartDetail.kichThuocs)" :value="size.maKichThuoc">{{
-                            size.maKichThuoc }}</option>
+                        <option v-for="size in sortSizes(thisPiece.kichThuocs)" :key="size.maKichThuoc"
+                            :value="size.maKichThuoc" :disabled="disabledSize.includes(size.maKichThuoc)">
+                            {{ size.maKichThuoc }}</option>
                     </select>
                 </span>
-                <span class="is-full" v-if="thisCartItem.full">(Trọn bộ)</span>
-                <span>Mã TP: {{ thisCartDetail.id }}</span>
+                <span v-if="thisCartDetail.manhTrangPhucs.length > 0" class="classify">{{ thisPiece.tenTrangPhuc }}</span>
+                <v-menu transition="slide-x-transition" :close-on-content-click="false" location="bottom"
+                    v-if="thisCartDetail.manhTrangPhucs.length > 0">
+                    <template v-slot:activator="{ props }">
+                        <svg class="change-classify" v-bind="props" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#bd10e0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M2.5 2v6h6M21.5 22v-6h-6"/><path d="M22 11.5A10 10 0 0 0 3.2 7.2M2 12.5a10 10 0 0 0 18.8 4.2"/></svg>
+                    </template>
+                    <v-card>
+                        <v-sheet class="mx-auto" elevation="10" max-width="300">
+                            <v-sheet class="pa-3 bg-primary text-right d-flex justify-space-between align-center">
+                                <div>Chọn phân loại</div>
+                            </v-sheet>
+                            <div class="pa-4">
+                                <v-chip-group v-model="thisCartItem.id" selected-class="text-primary" column filter>
+                                    <v-chip v-for="piece in thisCartDetail.manhTrangPhucs" :key="piece.id" :value="piece.id">
+                                        {{ piece.tenTrangPhuc }}
+                                    </v-chip>
+                                </v-chip-group>
+                            </div>
+                        </v-sheet>
+                    </v-card>
+                </v-menu>
+
+                <!-- <span>Mã TP: {{ thisCartItem.id }}</span> -->
             </div>
             <div class="cart-item-price">
                 <div class="item-discount">
@@ -188,7 +219,6 @@ const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.va
     </div>
 </template>
 <style scoped>
-
 .cart-item {
     width: 100%;
     display: flex;
@@ -199,7 +229,6 @@ const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.va
     padding: 10px;
     position: relative;
 }
-
 .discount-tag {
     position: absolute;
     top: -5px;
@@ -207,11 +236,11 @@ const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.va
     overflow: hidden;
     animation: slide_down 0.3s ease-in backwards;
 }
-
 @keyframes slide_down {
     0% {
         height: 0;
     }
+
     100% {
         height: 50px;
     }
@@ -238,26 +267,20 @@ const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.va
     border-radius: 5px;
     padding: 2px 5px;
 }
-
-
 .cart-item>div {
     display: inline-flex;
 }
-
 .cart-item-img {
     overflow: hidden;
 }
-
 .cart-img-preview {
     width: 100%;
     height: 100%;
 }
-
 .cart-img-preview img {
     width: 100px;
     height: 100px;
 }
-
 .cart-item-info {
     display: flex;
     flex-direction: column;
@@ -289,12 +312,25 @@ const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.va
 
 .cart-item-info .cart-item-size span>select {
     cursor: pointer;
+    padding: 2px 20px;
+    outline: none;
+    border: 1px solid #ccc;
+    border-radius: 5px;
 }
 
-.cart-item-info .cart-item-size span.is-full {
+.cart-item-info .cart-item-size span>select option:disabled {
+    color: #ccc;
+    text-decoration: line-through;
+}
+
+span.classify {
     color: red;
     font-weight: 600;
     font-style: italic;
+    font-size: 15px;
+}
+svg.change-classify {
+    cursor: pointer;
 }
 
 .cart-item-info .cart-item-price .item-price {
@@ -313,6 +349,7 @@ const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.va
     align-items: flex-end;
     justify-content: space-between;
 }
+
 .cart-item-action i {
     cursor: pointer;
 }
