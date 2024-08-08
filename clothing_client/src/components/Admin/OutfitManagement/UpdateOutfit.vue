@@ -226,11 +226,6 @@ const initCategory = () =>{
       })
     }
 }
-watch(choosedCategory, value =>{
-  
-},{
-  deep:true
-})
 onBeforeMount(() => {
   if(category.value.length == 0)
   getCategory().then((cat) => {

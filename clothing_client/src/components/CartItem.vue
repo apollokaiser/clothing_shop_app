@@ -102,16 +102,16 @@ const discountTagValue = computed(() => {
     }
 })
 const disabledSize = computed(() => {
-    if (thisPiece.value){
-        return thisPiece.value.kichThuocs.filter(size => size.soLuong == 0).map(size => size.maKichThuoc);
+    if (thisPiece.value) {
+        return thisPiece.value.kichThuocs.filter(size => size.soLuong == 0 || !size.trangThai).map(size => size.maKichThuoc);
     }
 })
 watch(() => thisCartItem.value.size, () => {
-        cart.changeCartItemSize(thisCartItem.value, props.item.size);
+    cart.changeCartItemSize(thisCartItem.value, props.item.size)
 }
 )
-watch(()=>thisCartItem.value.id, (newVal)=>{
-    if (newVal != props.item.id) 
+watch(() => thisCartItem.value.id, (newVal) => {
+    if (newVal != props.item.id)
         cart.changeCartItemId(thisCartItem.value, props.item.id, props.item.size);
 })
 watch(() => thisCartItem.value.quantity, (oldValue) => {
@@ -128,6 +128,13 @@ const hasSize = computed(() => {
         return thisPiece.value.kichThuocs[0] != "NONE";
     return false;
 })
+const disabledPiece = computed(()=>{
+    if (thisCartDetail.value) {
+       let disabled = thisCartDetail.value.manhTrangPhucs.filter(manh => !manh.tinhTrang || manh.kichThuocs.every(size=> size.soLuong ==0 || !size.trangThai))
+       if(disabled.length)
+        return disabled.map(manh=> manh.id);
+    } return []
+})
 const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.value.size)
 </script>
 
@@ -142,8 +149,8 @@ const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.va
         </div>
         <div class="cart-item-choose">
             <div class="cntr">
-                <input :disabled="disabledSize.includes(props.item.size)" v-model="props.item.check" class="hidden-xs-up radio-check" :id="chooseRadio" type="checkbox"
-                    :checked="props.item.check">
+                <input :disabled="disabledSize.includes(props.item.size)" v-model="props.item.check"
+                    class="hidden-xs-up radio-check" :id="chooseRadio" type="checkbox" :checked="props.item.check">
                 <label class="cbx" :for="chooseRadio"></label>
             </div>
         </div>
@@ -154,8 +161,10 @@ const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.va
         </div>
         <div class="cart-item-info col-sm-7">
             <div class="cart-item-name">
-                <h3 :class="{'text-decoration-line-through': disabledSize.includes(props.item.size),
-                'text-muted':disabledSize.includes(props.item.size)}">
+                <h3 :class="{
+                    'text-decoration-line-through': disabledSize.includes(props.item.size),
+                    'text-muted': disabledSize.includes(props.item.size)
+                }">
                     <Link to="/product-detail">
                     <span> {{ thisCartItem.id }} - {{ thisCartDetail.tenTrangPhuc }} </span>
                     </Link>
@@ -170,20 +179,27 @@ const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.va
                             {{ size.maKichThuoc }}</option>
                     </select>
                 </span>
-                <span v-if="thisCartDetail.manhTrangPhucs.length > 0" class="classify">{{ thisPiece.tenTrangPhuc }}</span>
+                <span v-if="thisCartDetail.manhTrangPhucs.length > 0" class="classify">{{ thisPiece.tenTrangPhuc
+                    }}</span>
                 <v-menu transition="slide-x-transition" :close-on-content-click="false" location="bottom"
                     v-if="thisCartDetail.manhTrangPhucs.length > 0">
                     <template v-slot:activator="{ props }">
-                        <svg class="change-classify" v-bind="props" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#bd10e0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M2.5 2v6h6M21.5 22v-6h-6"/><path d="M22 11.5A10 10 0 0 0 3.2 7.2M2 12.5a10 10 0 0 0 18.8 4.2"/></svg>
+                        <svg class="change-classify" v-bind="props" xmlns="http://www.w3.org/2000/svg" width="24"
+                            height="24" viewBox="0 0 24 24" fill="none" stroke="#bd10e0" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2.5 2v6h6M21.5 22v-6h-6" />
+                            <path d="M22 11.5A10 10 0 0 0 3.2 7.2M2 12.5a10 10 0 0 0 18.8 4.2" />
+                        </svg>
                     </template>
                     <v-card>
                         <v-sheet class="mx-auto" elevation="10" max-width="300">
                             <v-sheet class="pa-3 bg-primary text-right d-flex justify-space-between align-center">
                                 <div>Chọn phân loại</div>
                             </v-sheet>
-                            <div class="pa-4">
+                            <div class="pa-4 classify">
                                 <v-chip-group v-model="thisCartItem.id" selected-class="text-primary" column filter>
-                                    <v-chip v-for="piece in thisCartDetail.manhTrangPhucs" :key="piece.id" :value="piece.id">
+                                    <v-chip :disabled="disabledPiece.includes(piece.id)" v-for="piece in thisCartDetail.manhTrangPhucs"
+                                        :key="piece.id" :value="piece.id">
                                         {{ piece.tenTrangPhuc }}
                                     </v-chip>
                                 </v-chip-group>
@@ -191,7 +207,6 @@ const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.va
                         </v-sheet>
                     </v-card>
                 </v-menu>
-
                 <!-- <span>Mã TP: {{ thisCartItem.id }}</span> -->
             </div>
             <div class="cart-item-price">
@@ -229,6 +244,7 @@ const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.va
     padding: 10px;
     position: relative;
 }
+
 .discount-tag {
     position: absolute;
     top: -5px;
@@ -236,6 +252,7 @@ const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.va
     overflow: hidden;
     animation: slide_down 0.3s ease-in backwards;
 }
+
 @keyframes slide_down {
     0% {
         height: 0;
@@ -267,32 +284,47 @@ const chooseRadio = computed(() => thisCartItem.value.id + "-" + thisCartItem.va
     border-radius: 5px;
     padding: 2px 5px;
 }
+
 .cart-item>div {
     display: inline-flex;
 }
+
 .cart-item-img {
+    padding: 0 10px;
     overflow: hidden;
 }
+
 .cart-img-preview {
     width: 100%;
     height: 100%;
 }
+
 .cart-img-preview img {
     width: 100px;
-    height: 100px;
+    height: 100%;
+    object-fit: cover;
+
 }
+
 .cart-item-info {
     display: flex;
     flex-direction: column;
     padding-left: 20px;
     justify-content: space-between;
     align-items: flex-start;
+
 }
 
 .cart-item-info h3 {
     font-size: 20px;
     font-weight: 500;
     cursor: pointer;
+
+}
+
+.cart-item-info a {
+    word-break: break-all;
+
 }
 
 .cart-item-info .cart-item-price {
@@ -329,6 +361,7 @@ span.classify {
     font-style: italic;
     font-size: 15px;
 }
+
 svg.change-classify {
     cursor: pointer;
 }

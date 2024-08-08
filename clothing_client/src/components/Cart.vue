@@ -6,19 +6,23 @@ import CartItem from "./CartItem.vue";
 import PropmotionItem from "./PropmotionItem.vue";
 import Order from "./Order.vue";
 import { useCartStore } from "@/stores/cart.store";
+import { authStore } from "@/stores/user.store";
 import { usePromotionStore } from "@/stores/promotion.store";
 import { storeToRefs } from "pinia";
 import convertToVND from "@/utils/convertVND";
-import { getPromotionCode } from "@/data.function/getData";
+import { getPromotionCode, preparedOrder } from "@/data.function/getData";
 import { shortCurrency } from "@/utils/util.function";
+import Swal from "sweetalert2";
 
 const cart = useCartStore();
+const auth = authStore();
 const { cartItems, totalPrice } = storeToRefs(cart);
+const { isLoggedIn, loginRequest } = storeToRefs(auth);
 const khuyenMai = usePromotionStore();
-const { myPromotion, promotionCode, totalDiscount, paymentPromotion } =
-  storeToRefs(khuyenMai);
+const { myPromotion, promotionCode, totalDiscount, paymentPromotion } = storeToRefs(khuyenMai);
 const requestPending = reactive({
   getCode: false,
+  prepared_order: false,
 });
 const hasCart = ref(false);
 onBeforeMount(() => {
@@ -41,15 +45,15 @@ watch(
   }
 );
 const checkAllCart = ref(true);
-watch(checkAllCart, value =>{
-  if(value && cartItems.value.some(item=> item.check == false)) {
+watch(checkAllCart, value => {
+  if (value && cartItems.value.some(item => item.check == false)) {
     cartItems.value.forEach((item) => (item.check = value));
-  } if(!value && !cartItems.value.some(item=> item.check == false)){
+  } if (!value && !cartItems.value.some(item => item.check == false)) {
     cartItems.value.forEach((item) => (item.check = value));
   }
 })
-watch(cartItems, value =>{
-  if(value.some(item=> item.check == false)) {
+watch(cartItems, value => {
+  if (value.some(item => item.check == false)) {
     checkAllCart.value = false;
   } else {
     checkAllCart.value = true;
@@ -89,6 +93,45 @@ const confirmPromotionCode = () => {
     promotionCode.value.check = true;
   }
 };
+const openOrder = () => {
+  if (!isLoggedIn.value) {
+    (async () => {
+      const { value: submit } = await Swal.fire({
+        title: "Thông báo",
+        text: "Bạn chưa đăng nhập. Vui lòng đăng nhập để mua hàng",
+        icon: 'warning',
+        showCancelButton: true,
+        cancelButtonText: 'Quay lại',
+      })
+      if (submit) {
+        loginRequest.value = true;
+      }
+    })()
+    return;
+  }
+  Swal.showLoading();
+  preparedOrder(cartItems.value).then(res => {
+    Swal.hideLoading();
+    if (res) {
+      let myModal = new bootstrap.Modal(document.getElementById('order'), { keyboard: false })
+      myModal.show();
+    } else {
+      (async () => {
+        const { value: submit } = await Swal.fire({
+          title: "Thông báo",
+          text: "Một số sản phẩm của bạn đã hết hàng hoặc ngưng cho thuê !",
+          icon: 'info',
+          showCancelButton: true,
+          cancelButtonText: 'Quay lại',
+        })
+        if (submit) {
+          window.location.reload();
+        }
+      })()
+    }
+  })
+
+}
 </script>
 
 <template>
@@ -97,20 +140,15 @@ const confirmPromotionCode = () => {
       <div class="cart-notification">
         <h1>Giỏ hàng của bạn đang trống</h1>
         <h3>Hãy chọn thêm sản phẩm để mua sắm nhé !</h3>
-        <Link to="/"
-          ><span class="btn-return"
-            ><span>Trở lại ngay</span
-            ><i class="fa fa-angle-double-right" aria-hidden="true"></i></span
-        ></Link>
+        <Link to="/"><span class="btn-return"><span>Trở lại ngay</span><i class="fa fa-angle-double-right"
+            aria-hidden="true"></i></span></Link>
       </div>
     </div>
     <div v-if="hasCart" class="hascart">
       <div class="card-container">
         <div class="cart-header">
           <div class="cart-header-item">
-            <Link to="/"
-              ><i class="fa fa-long-arrow-left" aria-hidden="true"></i
-            ></Link>
+            <Link to="/"><i class="fa fa-long-arrow-left" aria-hidden="true"></i></Link>
             <h3>Giỏ hàng của bạn</h3>
           </div>
         </div>
@@ -118,11 +156,7 @@ const confirmPromotionCode = () => {
           <div class="cart-option">
             <div class="cart-select-all">
               <div class="cntr">
-                <input v-model="checkAllCart"
-                  class="hidden-xs-up"
-                  id="cbx"
-                  type="checkbox"
-                />
+                <input v-model="checkAllCart" class="hidden-xs-up" id="cbx" type="checkbox" />
                 <label class="cbx" for="cbx"></label>
               </div>
               <span>Chọn tất cả</span>
@@ -135,40 +169,24 @@ const confirmPromotionCode = () => {
       </div>
       <div class="promotion-container">
         <div class="promotion-main">
-          <div
-            class="promotion-header d-flex justify-content-between align-items-baseline"
-          >
+          <div class="promotion-header d-flex justify-content-between align-items-baseline">
             <div>KHUYẾN MÃI</div>
             <div data-bs-toggle="modal" data-bs-target="#prmotionCode">
               Nhập mã
               <i class="fa fa-angle-double-right ms-1" aria-hidden="true"></i>
             </div>
           </div>
-          <div
-            class="propmotion-content d-flex flex-column justify-content-center align-items-start"
-          >
-            <PropmotionItem
-              v-for="item in myPromotion"
-              :key="item.id"
-              :promotion="item"
-              :category="true"
-            />
-            <PropmotionItem
-              v-for="item in paymentPromotion"
-              :key="item.maKhuyenMai"
-              :promotion="item"
-              :payment="true"
-            ></PropmotionItem>
+          <div class="propmotion-content d-flex flex-column justify-content-center align-items-start">
+            <PropmotionItem v-for="item in myPromotion" :key="item.id" :promotion="item" :category="true" />
+            <PropmotionItem v-for="item in paymentPromotion" :key="item.maKhuyenMai" :promotion="item" :payment="true">
+            </PropmotionItem>
           </div>
           <div class="promotion-apply">
             <div class="promotion-apply-main">
               <div v-if="promotionCode.check" class="promotion-card">
                 <img src="/images/discount.png" alt="" />
                 <span>{{ ticketCodeValue }}</span>
-                <i
-                  @click="promotionCode.check = false"
-                  class="fa-regular fa-circle-xmark"
-                ></i>
+                <i @click="promotionCode.check = false" class="fa-regular fa-circle-xmark"></i>
               </div>
             </div>
           </div>
@@ -181,15 +199,11 @@ const confirmPromotionCode = () => {
         </div>
 
         <div class="payment-main">
-          <div
-            class="payment-header d-flex justify-content-between align-items-baseline"
-          >
+          <div class="payment-header d-flex justify-content-between align-items-baseline">
             <div>Thành tiền</div>
             <div>{{ convertToVND(totalPrice) }}</div>
           </div>
-          <div
-            class="payment-content d-flex flex-column justify-content-center align-items-start"
-          >
+          <div class="payment-content d-flex flex-column justify-content-center align-items-start">
             <div class="total-discount">
               <span>Tổng ưu dãi</span>
               <span>{{ convertToVND(totalDiscount) }}</span>
@@ -199,10 +213,8 @@ const confirmPromotionCode = () => {
               <span>{{ convertToVND(totalPrice - totalDiscount) }}</span>
             </div>
           </div>
-          <div
-            class="payment-footer d-flex justify-content-end align-items-baseline"
-          >
-            <button data-bs-toggle="modal" data-bs-target="#order">
+          <div class="payment-footer d-flex justify-content-end align-items-baseline">
+            <button @click.prevent="openOrder()">
               Tính ngay
               <span></span>
             </button>
@@ -211,14 +223,8 @@ const confirmPromotionCode = () => {
       </div>
     </div>
     <!--add coupon modal-->
-    <div
-      class="modal fade"
-      id="prmotionCode"
-      data-bs-keyboard="false"
-      tabindex="-1"
-      aria-labelledby="prmotionCodeLabel"
-      aria-hidden="true"
-    >
+    <div class="modal fade" id="prmotionCode" data-bs-keyboard="false" tabindex="-1" aria-labelledby="prmotionCodeLabel"
+      aria-hidden="true">
       <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content">
           <div class="modal-header">
@@ -229,8 +235,7 @@ const confirmPromotionCode = () => {
               <div class="funny-img">
                 <img
                   src="/images/toppng.com-bunny-ramen-cute-gifs-kawaii-png-kawaii-kawaii-bunny-bunny-eating-noodles-gif-500x636.png"
-                  alt=""
-                />
+                  alt="" />
               </div>
             </div>
             <!-- <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button> -->
@@ -257,13 +262,8 @@ const confirmPromotionCode = () => {
                   Ưu đãi đã hết hạn hoặc không còn lượt nhập
                 </em>
                 <div class="input-code-field">
-                  <input
-                    v-model="promotionCode.code"
-                    placeholder="Type here..."
-                    id="input-code"
-                    name="text"
-                    type="text"
-                  />
+                  <input v-model="promotionCode.code" placeholder="Type here..." id="input-code" name="text"
+                    type="text" />
                   <button @click.prevent="checkCode">
                     <span v-if="requestPending.getCode" class="loader"></span>
                     <span v-else>Kiểm tra</span>
@@ -271,27 +271,15 @@ const confirmPromotionCode = () => {
                 </div>
               </div>
               <div class="promotion-ticket-container">
-                <Ticket
-                  v-if="promotionCode.promotion != ''"
-                  :ticket="promotionCode.promotion"
-                />
+                <Ticket v-if="promotionCode.promotion != ''" :ticket="promotionCode.promotion" />
               </div>
             </div>
           </div>
           <div class="modal-footer">
-            <button
-              type="button"
-              class="btn btn-secondary"
-              data-bs-dismiss="modal"
-            >
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
               Trở lại
             </button>
-            <button
-              @click.prevent="confirmPromotionCode"
-              data-bs-dismiss="modal"
-              type="button"
-              class="btn btn-primary"
-            >
+            <button @click.prevent="confirmPromotionCode" data-bs-dismiss="modal" type="button" class="btn btn-primary">
               Xác nhận
             </button>
           </div>
@@ -299,7 +287,7 @@ const confirmPromotionCode = () => {
       </div>
     </div>
     <!--end modal-->
-    <Order />
+    <Order v-if="isLoggedIn"/>
   </div>
 </template>
 <style scoped>
@@ -418,11 +406,11 @@ const confirmPromotionCode = () => {
   cursor: pointer;
 }
 
-.promotion-header div:nth-child(2):hover > i {
+.promotion-header div:nth-child(2):hover>i {
   transform: translateX(5px);
 }
 
-.promotion-header div:nth-child(2) > i {
+.promotion-header div:nth-child(2)>i {
   transition: all 0.3s ease;
 }
 
@@ -431,7 +419,7 @@ const confirmPromotionCode = () => {
   border-bottom: unset !important;
 }
 
-.promotion-footer > div:first-child {
+.promotion-footer>div:first-child {
   margin-right: 20px;
 }
 
@@ -715,13 +703,13 @@ const confirmPromotionCode = () => {
   transition-delay: 0.15s;
 }
 
-#cbx:checked ~ .cbx {
+#cbx:checked~.cbx {
   border-color: transparent;
   background: #ec4899;
   animation: jelly 0.4s ease;
 }
 
-#cbx:checked ~ .cbx:after {
+#cbx:checked~.cbx:after {
   opacity: 1;
   transform: rotate(45deg) scale(1);
 }
@@ -771,7 +759,7 @@ const confirmPromotionCode = () => {
   padding: 10px;
 }
 
-.modal-promotion-header > div.modal-promotion-title {
+.modal-promotion-header>div.modal-promotion-title {
   position: absolute;
   top: 0%;
   right: 30%;
@@ -888,8 +876,7 @@ const confirmPromotionCode = () => {
   display: inline-block;
   width: 60px;
   aspect-ratio: 4;
-  background: radial-gradient(circle closest-side, #ffffff 90%, #ffffff00) 0 /
-    calc(100% / 3) 100% no-repeat;
+  background: radial-gradient(circle closest-side, #ffffff 90%, #ffffff00) 0 / calc(100% / 3) 100% no-repeat;
   animation: loading 1s steps(3) infinite;
 }
 

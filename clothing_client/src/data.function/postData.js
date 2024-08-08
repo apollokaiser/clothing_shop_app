@@ -23,6 +23,46 @@ export const saveCart = async (userId, insertCart, deleteCart = []) => {
         return response;
     }
 }
+export const addCart = async(cartItem) => {
+    const cart = {
+        id: cartItem.id,
+        quantity: Number(cartItem.quantity),
+        size: cartItem.size,
+        parentId: cartItem.parentId
+    }
+    const response = await axios.post(`/gio-hang/v2/luu-gio-hang`, cart) 
+    if (response.status && response.status === 200) {
+        return true;
+    } else {
+        return response;
+    }
+}
+export const updateCart = async(cart) => {
+    const response = await axios.put(`/gio-hang/v2/cap-nhat-gio-hang`, cart) 
+    if (response.status && response.status === 200) {
+        return true;
+    } else {
+        return response;
+    }
+}
+export const updateOutfitInCart = async(newItem, oldItem) => {
+    const response = await axios.put(`/gio-hang/v2/cap-nhat-gio-hang`, {
+        newItem,oldItem
+    }) 
+    if (response.status && response.status === 200) {
+        return true;
+    } else {
+        return response;
+    }
+}
+export const deleteCart = async(cart) => {
+    const response = await axios.delete(`/gio-hang/v2/xoa-gio-hang`, cart) 
+    if (response.status && response.status === 200) {
+        return true;
+    } else {
+        return response;
+    }
+}
 export const saveOrder = async (cartItem, cartDetail, orderDetail, user = null) => {
     let order = {
         tenNguoiNhan: orderDetail.tenNguoiNhan,
@@ -177,12 +217,13 @@ export const updatePromotion = async (data, ids) => {
     }
 
 }
-export const addOutfit = async (data, images) => {
+export const addOutfit = async (trangPhuc, images) => {
     if (images.length == 0) return null;
     let result = await uploadFiles(images);
     if (!result) return null;
-    data.hinhAnhs = result;
-    const response = await axios.post('/trang-phuc/them-trang-phuc', { trangPhuc: data });
+    trangPhuc.hinhAnhs = result;
+    const response = await axios.post('/trang-phuc/them-trang-phuc', trangPhuc);
+    console.log(response);
     if (response?.status === 200) {
         return response.data;
     } else {
@@ -232,23 +273,23 @@ export const lockOutfit = async (ids) => {
         return null;
     }
 }
-export const updateOutfit = async (data, uploadImg = null, removeImage = null) => {
+export const updateOutfit = async (trangPhuc, uploadImg = null, removeImage = null) => {
     if (uploadImg && uploadImg.length != 0) {
         let result = await uploadFiles(uploadImg);
         if (!result) return null;
-        data.hinhAnhs = [...data.hinhAnhs, ...result];
+        trangPhuc.hinhAnhs = [...trangPhuc.hinhAnhs, ...result];
     }
     if (removeImage && removeImage.length != 0) {
-        data.hinhAnhs = data.hinhAnhs.filter(item => !removeImage.includes(item));
+        trangPhuc.hinhAnhs = trangPhuc.hinhAnhs.filter(item => !removeImage.includes(item));
         removeImage.forEach(item => {
             deleteFileByUrl(item).then();
         })
     }
     if (!uploadImg && !removeImage) {
-        data.hinhAnhs = [];
+        trangPhuc.hinhAnhs = [];
     }
-    console.log(data);
-    const response = await axios.put('/trang-phuc/cap-nhat-trang-phuc', { trangPhuc: data });
+    console.log(trangPhuc);
+    const response = await axios.put('/trang-phuc/cap-nhat-trang-phuc', trangPhuc );
     console.log(response);
     if (response.status === 200) {
         return response.data;

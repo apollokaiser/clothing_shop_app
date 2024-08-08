@@ -48,7 +48,7 @@ export const getSize = async() =>{
     }
 }
 export const getCart = async(userId) =>{
-    const response = await axios.get(`/gio-hang/danh-sach?uid=${userId}`);
+    const response = await axios.get(`/gio-hang/v2/danh-sach?indentify=${userId}`);
     if(response.status === 200) {
         return response.data.data;
     } else {
@@ -216,6 +216,15 @@ export const getAllPromotion = async(page=0, size=6) => {
         return response.data.data.promotions;
     } else {
         return null;
+    }
+}
+export const preparedOrder = async(cart) =>{
+    const response = await axios.post(`/gio-hang/v2/prepared-order`, cart);
+    console.log(response);
+    if(response.status === 202) {
+        return true;
+    } else {
+        return false;
     }
 }
 

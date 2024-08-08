@@ -16,15 +16,15 @@
         alt=""
       />
     </div>
-    <div class="outfit-">{{ props.outfit.id }}</div>
-    <div class="outfit-news-description">
+    <div class="outfit-news-description d-flex flex-column">
+      <div class="outfit-id">Mã: <span>{{props.outfit.id }}</span></div>
       <Link  :to="{name:'update-outfit', params:{id:props.outfit.id}}" v-bind="$attrs">
      <span>{{ props.outfit.tenTrangPhuc }}</span>
   </Link>
     </div>
     
     <div class="outfit-new-quantity">
-      <span>Số lượng: <span>{{ props.outfit.soLuong }}</span></span>
+      <span><i v-if="!props.outfit.hasPiece">Số lượng: </i> <span>{{ quantity }}</span></span>
       <span v-if="updateOutfit" class="delete-outfit" @click="removeOutfit">
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -92,6 +92,10 @@ watch(deleteCommand, value=>{
   if(value) {
     emit('delete', props.outfit.id)
   }
+})
+const quantity = computed(()=>{
+  if(props.outfit.hasPiece) return "Xem thêm"
+  else return props.outfit.soLuong;
 })
 const updateOutfit = computed(() => {
   if (user.value.scope.includes(ROLES.ADMIN)) {
@@ -171,7 +175,7 @@ const removeOutfit =()=>{
   display:block;
   width: 40%;
 }
-.outfit-news-description span:first-child {
+.outfit-news-description a span:first-child {
   color: orange;
   font-weight: bold;
   display: block;
@@ -179,7 +183,10 @@ const removeOutfit =()=>{
   text-overflow: ellipsis;
   overflow: hidden;
   white-space: nowrap;
-  
+}
+.outfit-id {
+  color: #fff !important;
+  margin-bottom: 0.5rem;
 }
 .outfit-new-quantity {
   min-width: 170px;

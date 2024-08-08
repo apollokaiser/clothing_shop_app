@@ -43,22 +43,41 @@ onBeforeMount(() => {
     if (props.details) {
         outfit.value = props.details;
         outfitDisplay.name = outfit.value.tenTrangPhuc;
-        outfitDisplay.display = outfit.value.manhTrangPhucs?.length >0 ? outfit.value.manhTrangPhucs[0] : outfit.value;
-        phanLoai.value = outfit.value.manhTrangPhucs?.length >0 ? outfit.value.manhTrangPhucs : [];
+        if(outfit.value.manhTrangPhucs) {
+                outfitDisplay.display = 
+                                    outfit.value.manhTrangPhucs.find(item=> item.tinhTrang && item.kichThuocs.some(size=> size.soLuong != 0 && size.trangThai))
+                phanLoai.value = outfit.value.manhTrangPhucs;
+            } else{
+                outfitDisplay.display = outfit.value;
+                phanLoai.value = [];
+            }
+        // outfitDisplay.display = outfit.value.manhTrangPhucs?.length > 0 ? outfit.value.manhTrangPhucs[0] : outfit.value;
+        // phanLoai.value = outfit.value.manhTrangPhucs?.length > 0 ? outfit.value.manhTrangPhucs : [];
     } else {
         getOutFitDetail(props.id).then((res) => {
             outfit.value = res;
             outfitDisplay.name = outfit.value.tenTrangPhuc;
-            outfitDisplay.display = outfit.value.manhTrangPhucs ? outfit.value.manhTrangPhucs[0] : outfit.value;
-            phanLoai.value = outfit.value.manhTrangPhucs ? outfit.value.manhTrangPhucs : [];
+            if(outfit.value.manhTrangPhucs) {
+                outfitDisplay.display = 
+                                    outfit.value.manhTrangPhucs.find(item=> item.tinhTrang && item.kichThuocs.some(size=> size.soLuong != 0 && size.trangThai))
+                phanLoai.value = outfit.value.manhTrangPhucs;
+            } else{
+                outfitDisplay.display = outfit.value;
+                phanLoai.value = [];
+            }
+            // outfitDisplay.display = outfit.value.manhTrangPhucs ? outfit.value.manhTrangPhucs[0] : outfit.value;
+            // phanLoai.value = outfit.value.manhTrangPhucs ? outfit.value.manhTrangPhucs : [];
         });
     }
 });
 const outfitStatus = computed(() => {
     let thisOutfit = outfitDisplay.display.kichThuocs.find(size => size.maKichThuoc == checkOutFit.checkSize);
-    if (outfitDisplay.display.tinhTrang) return 1;
-    else if (thisOutfit.soLuong == 0) return -1;
-    return 0;
+    if (outfitDisplay.display.tinhTrang) {
+        if (thisOutfit?.soLuong == 0) return -1;
+        if (!thisOutfit?.trangThai) return 0;
+        else return 1;
+    }
+    else return 0;
 })
 const outfitSize = computed(() => {
     if (outfitDisplay.display) return outfitDisplay.display.kichThuocs.find(size => size.maKichThuoc == checkOutFit.checkSize);
@@ -85,7 +104,7 @@ watch(
         if (value.kichThuocs[0].makichThuoc != "NONE") {
             //NOTE: sort lại kích thước theo thứ tự
             value.kichThuocs = sortSizes(value.kichThuocs);
-            checkOutFit.checkSize = outfitDisplay.display.kichThuocs.find(size=> size.soLuong !=0)?.maKichThuoc;
+            checkOutFit.checkSize = outfitDisplay.display.kichThuocs.find(size => size.soLuong != 0 && size.trangThai)?.maKichThuoc;
         } else {
             checkOutFit.checkSize = "NONE";
         }
@@ -110,9 +129,9 @@ watch(
 //         }
 //     }
 // );
-watch(()=> checkOutFit.quantity, value =>{
-    if(value <= 0) checkOutFit.quantity = 1;
-    if(value > outfitSize.value.soLuong) {
+watch(() => checkOutFit.quantity, value => {
+    if (value <= 0) checkOutFit.quantity = 1;
+    if (value > outfitSize.value.soLuong) {
         Toast.fire({
             icon: "error",
             title: "Số lượng quá hạn!"
@@ -120,22 +139,38 @@ watch(()=> checkOutFit.quantity, value =>{
         checkOutFit.quantity = outfitSize.value.soLuong;
     }
 })
-const chooseOutfitSize =(id) =>{
-            if(outfitDisplay.display.kichThuocs.find(size=> size.maKichThuoc == id).soLuong == 0) {
-                Toast.fire({
-                    icon: "error",
-                    title: "Sản phẩm đã hết hàng!"
-                })
-            } else {
-                checkOutFit.checkSize = id;
-            }
+const chooseOutfitSize = (id) => {
+    console.log("log to chooseOutfitSize");
+    console.log(outfitDisplay.display);
+    if (!outfitDisplay.display.tinhTrang) {
+        Toast.fire({
+            icon: "error",
+            title: "Sản phẩm đã ngừng cho thuê!"
+        })
+        return;
+    }
+    if (outfitDisplay.display.kichThuocs.find(size => size.maKichThuoc == id).soLuong == 0) {
+        Toast.fire({
+            icon: "error",
+            title: "Sản phẩm đã hết hàng!"
+        })
+    } else {
+        checkOutFit.checkSize = id;
+    }
 }
- // function
+// function
 const chooseOutfitHandle = (id) => {
-    let temp =  phanLoai.value.find((item) => item.id == id);
-    if(temp) {
+    let temp = phanLoai.value.find((item) => item.id == id);
+    if (temp) {
+        if (!temp.tinhTrang) {
+            Toast.fire({
+                icon: "error",
+                title: "Sản phẩm đã ngừng cho thuê!"
+            })
+            return;
+        }
         // kiểm tra hết hàng chưa
-        if(temp.kichThuocs.length >= 1 && temp.kichThuocs.every(size=> size.soLuong == 0)) {
+        if (temp.kichThuocs.length >= 1 && temp.kichThuocs.every(size => size.soLuong == 0)) {
             Toast.fire({
                 icon: "error",
                 title: "Sản phẩm đã hết hàng!"
@@ -149,28 +184,30 @@ const chooseOutfitHandle = (id) => {
 //FIXME: Thêm parentId và detail
 const addCart = () => {
     //NOTE: xem lại watch của outfitDisplay.display để hiểu chi tiết 
-    if(!checkOutFit.checkSize) {
+    if (!checkOutFit.checkSize) {
         Toast.fire({
             icon: "error",
             title: "Sản phẩm đã tạm hết !"
         })
         return;
     }
-        let detail =toRaw(outfit.value);
-        detail.hinhAnh = outfit.value.hinhAnhs[0];
-        detail.hinhAnhs = null;
-        detail.moTa = null;
-        cart.addCart(
-            {
-                id: checkOutFit.id,
-                size: checkOutFit.checkSize,
-                quantity: checkOutFit.quantity,
-                parentId: outfit.value.id,
-            },
-            detail
-        );
+    let detail = toRaw(outfit.value);
+    detail.hinhAnh = outfit.value.hinhAnhs[0];
+    detail.hinhAnhs = null;
+    detail.moTa = null;
+    cart.addCart(
+        {
+            id: checkOutFit.id,
+            size: checkOutFit.checkSize,
+            quantity: checkOutFit.quantity,
+            parentId: outfit.value.id,
+        },
+        detail
+    );
 };
-
+const cannotChoose = (item) =>{
+    return !item.tinhTrang || item.kichThuocs.every(size=> size.soLuong==0 || size.trangThai== 0);
+}
 const handleQuantity = {
     add: () => {
         if (checkOutFit.quantity < outfitSize.value?.soLuong) {
@@ -231,13 +268,10 @@ const handleQuantity = {
                         <div class="outfit-status">
                             <span>Tình trạng: </span>
                             <span class="status-notice ps-1">
-                                <b>{{ outfitStatus == 1 ? 'Đang cho thuê' : (outfitStatus == -1 ? 'Tạm hết' : 'Ngừng cho thuê') }}</b>
+                                <b>{{ outfitStatus == 1 ? 'Đang cho thuê' : (outfitStatus == -1 ? 'Tạm hết' : 'Ngừng cho thuê')
+                                    }}</b>
                             </span>
                         </div>
-                        <!-- <div class="outfit-stock">
-                            <span>Số lượng: </span>
-                            <span class="stock-notice ps-1">{{ outfitDisplay.display.soLuong }}</span>
-                        </div> -->
                     </div>
                     <div class="outfit-price col-sm-6 d-flex align-items-baseline">
                         <span>Giá:</span><span>{{ price }}</span>
@@ -246,13 +280,13 @@ const handleQuantity = {
                     <div v-if="showSize" class="outfit-size col-sm-12 d-flex align-items-baseline">
                         <span>Kích thước:</span>
                         <div class="outfit-size-box">
-                            <div v-for="size in outfitDisplay.display.kichThuocs" :key="size.id" class="size-item" :class="{'not-allow-click':size.soLuong < 1 }">
-                                <input hidden type="radio"
-                                    :id="'size-' + size.maKichThuoc" name="check_size" :value="size.maKichThuoc" />
+                            <div v-for="size in outfitDisplay.display.kichThuocs" :key="size.id" class="size-item"
+                                :class="{ 'not-allow-click': size.soLuong < 1 }">
+                                <input hidden type="radio" :id="'size-' + size.maKichThuoc" name="check_size"
+                                    :value="size.maKichThuoc" />
                                 <label  :for="'size-' + size.maKichThuoc"
-                                    :class="{ 'sd': checkOutFit.checkSize == size.maKichThuoc}"
-                                    @click="chooseOutfitSize(size.maKichThuoc)"
-                                    >
+                                    :class="{ 'sd': checkOutFit.checkSize == size.maKichThuoc }"
+                                    @click="chooseOutfitSize(size.maKichThuoc)">
                                     {{ size.maKichThuoc }}
                                     <i class="fa fa-check" aria-hidden="true"></i>
                                 </label>
@@ -262,9 +296,10 @@ const handleQuantity = {
                     <div v-if="hasOutfitPieces" class="outfit-accessory col-sm-12 d-flex align-items-baseline">
                         <span>Phân loại:</span>
                         <div class="select-accessory">
-                            <div v-for="item in outfit.manhTrangPhucs" :key="item.id"
+                            <div v-for="item in outfit.manhTrangPhucs" :key="item.id" 
                                 @click="chooseOutfitHandle(item.id)" class="accessory-item"
-                                :class="{ active: item.id == outfitDisplay.display.id }">
+                                :class="{ active: item.id == outfitDisplay.display.id,
+                                'cross-not-sale':cannotChoose(item)}">
                                 {{ item.tenTrangPhuc }}
                             </div>
                         </div>
@@ -311,6 +346,7 @@ const handleQuantity = {
     overflow: hidden;
     padding: 0px 10px 10px 10px;
 }
+
 .slide-btn {
     position: absolute;
     top: 50%;
@@ -516,7 +552,36 @@ const handleQuantity = {
     flex-wrap: wrap;
     justify-content: space-evenly;
 }
+
 .not-allow-click {
     cursor: not-allowed;
+}
+div.cross-not-sale {
+    position: relative;
+    overflow: hidden;
+}
+.cross-not-sale::after {
+    content: "";
+    font-size: 20px;
+    width: 100%;
+    height: 1px;
+    position: absolute;
+    background-color: #ccc;
+    top:50%;
+    left:0;
+    z-index:1000;
+    transform:rotate(15deg)
+}
+.cross-not-sale::before {
+    content: "";
+    font-size: 20px;
+    width: 100%;
+    height: 1px;
+    position: absolute;
+    background-color: #ccc;
+    top:50%;
+    right:0;
+    z-index:1000;
+    transform:rotate(-15deg)
 }
 </style>

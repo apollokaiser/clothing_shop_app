@@ -7,22 +7,27 @@
             stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M19 12H6M12 5l-7 7 7 7" />
           </svg>
-          <span>Thêm sản phẩm</span>
+          <span class="d-flex align-items-center"><span>Thông tin sản phẩm</span>
+            <v-btn class="ma-2" color="indigo" size="x-small" icon="mdi-wrench">
+              <v-icon aria-hidden="false">mdi-wrench</v-icon>
+              <v-tooltip activator="parent" location="bottom">Chỉnh thông tin sản phẩm</v-tooltip>
+            </v-btn>
+          </span>
         </div>
         <div class="add-action">
-          <button class="add-submit" @click.prevent="addOufitHandle">Thêm ngay</button>
+          <button class="add-submit" @click.prevent="addOufitHandle">Cập nhật</button>
         </div>
       </div>
       <div class="add-outfit-form mt-3">
         <div class="add-outfit-info col-sm-5">
           <div class="input-data outfit-name">
             <label for="outfitName">Tên sản phẩm</label>
-            <input v-model="data.tenTrangPhuc" type="text" id="outfitName" />
+            <input v-model="data.outfit.tenTrangPhuc" type="text" id="outfitName" />
           </div>
           <div>
             <v-dialog max-width="500" v-if="!isAccessary">
               <template v-slot:activator="{ props: activatorProps }">
-                <v-btn v-bind="activatorProps" prepend-icon="mdi-plus" class="mt-5 w-50">
+                <v-btn @click="resetOutfitPiece" v-bind="activatorProps" prepend-icon="mdi-plus" class="mt-5 w-50">
                   <template v-slot:prepend>
                     <v-icon color="success"></v-icon>
                   </template>
@@ -44,7 +49,7 @@
                             :value="item" />
                           <span class="size-checkbox"></span>
                           <span>{{ item }}</span>
-                          <input v-model="outfitPieceSize[item].quantity" class="quantity" type="number"
+                          <input v-model="outfitPieceSize[item].quantity" class="quantity" type="text"
                             placeholder="số lượng ..." />
                         </label>
                       </div>
@@ -58,14 +63,19 @@
                 </v-card>
               </template>
             </v-dialog>
-            <div v-if="!isAccessary && data.manhTrangPhucs.length > 0" class="accessary-container w-100 mt-5">
+            <div v-if="!isAccessary && data.outfit.manhTrangPhucs?.length > 0" class="accessary-container w-100 mt-5">
               <v-sheet class="mx-auto accessary-content" color="#435c70" max-width="300">
                 <div class="pa-4">
                   <v-chip-group column>
-                    <v-chip density="comfortable" @click="updatePiece(index)" size="large" closable
-                      v-model="data.manhTrangPhucs[index]" @click:close="removePiece"
-                      v-for="(item, index) in data.manhTrangPhucs" :key="index"> {{
-                        item.tenTrangPhuc }} </v-chip>
+                    <v-chip density="comfortable" @click="updatePiece(index)" size="large"
+                      v-model="data.outfit.manhTrangPhucs[index]" v-for="(item, index) in data.outfit.manhTrangPhucs"
+                      :key="index">
+                      {{
+                        item.tenTrangPhuc }}
+                      <template #close>
+                        <v-icon icon="mdi-close-circle" @click.stop="removePiece(data.outfit.manhTrangPhucs[index])" />
+                      </template>
+                    </v-chip>
                   </v-chip-group>
                 </div>
               </v-sheet>
@@ -73,22 +83,22 @@
           </div>
           <div class="input-data outfit-description">
             <label for="outfitDescription">Mô tả</label>
-            <textarea v-model="data.moTa" id="outfitDescription" />
+            <textarea v-model="data.outfit.moTa" id="outfitDescription" />
           </div>
           <div class="input-data outfit-category">
             <label for="category">Danh mục</label>
             <button data-bs-toggle="modal" data-bs-target="#chooseCategory">
-              Chọn danh mục
+              {{ data.category?.tenLoai || 'Chọn danh mục' }}
             </button>
-            <div v-if="choosedCategory.length > 0" id="category">
-              {{ choosedCategory.at(0).tenLoai }}
-            </div>
+            <!-- <div v-if="choosedCategory?.length > 0" id="category">
+              {{ choosedCategory?.at(0).tenLoai }}
+            </div> -->
           </div>
-          <div v-if="!data.manhTrangPhucs.length" class="input-data outfit-price">
+          <div v-if="!data.outfit.manhTrangPhucs?.length" class="input-data outfit-price">
             <label for="outfitPrice">Giá tiền</label>
-            <input v-model="data.giaTien" type="number" id="outfitPrice" />
+            <input v-model="data.outfit.giaTien" type="number" id="outfitPrice" />
           </div>
-          <div class="outfit-size" v-if="!data.manhTrangPhucs.length">
+          <div class="outfit-size" v-if="!data.outfit.manhTrangPhucs?.length">
             <!--NOTE: v-for size-->
             <div class="size" v-if="!isAccessary">
               <div class="w-100">Kích thước</div>
@@ -96,13 +106,14 @@
                 <input v-model="selectedSize[item].checked" type="checkbox" class="input-size" :value="item" />
                 <span class="size-checkbox"></span>
                 <span>{{ item }}</span>
-                <input v-model="selectedSize[item].quantity" class="quantity" type="number"
+                <input v-model="selectedSize[item].quantity" @blur="updateSize(item)" class="quantity" type="number"
                   placeholder="số lượng ..." />
               </label>
             </div>
             <div v-else class="quantity-not-size mt-4">
               <label for="quantity-not-size">Số lượng</label>
-              <input v-model="data.tonKho" id="quantity-not-size" type="number" placeholder="số lượng..." />
+              <input v-model="data.outfit.tonKho" @blur="updateSize('NONE')" id="quantity-not-size" type="number"
+                placeholder="số lượng..." />
             </div>
           </div>
         </div>
@@ -114,17 +125,17 @@
                 <swiper :direction="'vertical'" :slides-per-view="1" :space-between="10" :mousewheel="true"
                   class="mySwiper">
                   <swiper-slide v-for="(image, index) in images" :key="index">
-                    <img :src="image.img" alt="Selected image" width="100%" />
+                    <img @mouseover="checkImage(index)" :src="image.img" alt="Selected image" width="100%" />
                   </swiper-slide>
                   <div class="swiper-pagination" slot="pagination"></div>
                 </swiper>
               </div>
             </label>
             <input type="file" id="uploadImages" hidden accept="image/**" multiple @change="uploadImages" />
-            <div v-if="images.length > 0" class="img-counter">
-              <span>{{ images.length }}</span>
+            <div @click="removeImage" v-if="images.length > 0" class="img-counter">
+              <span>X</span>
             </div>
-            <div v-if="images.length > 0" class="img-reset">
+            <div class="img-reset">
               <span @click="resetImage">
                 <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 30" fill="none"
                   stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -132,6 +143,9 @@
                 </svg>
               </span>
             </div>
+          </div>
+          <div class="remove-all-btn">
+            <button @click.prevent="deleteAll" type="">Chọn lại</button>
           </div>
         </div>
         <!--/image component-->
@@ -147,7 +161,8 @@
           </div>
           <div class="modal-body">
             <ul class="menu">
-              <ListCategory v-for="c in category" :item="c" :key="c.maLoai" :single="true">
+              <ListCategory v-for="c in category" :item="c" :key="c.maLoai" :single="true"
+                :accessary="data.outfit.manhTrangPhucs?.length == 0" :initial="choosedCategory">
               </ListCategory>
             </ul>
           </div>
@@ -155,7 +170,7 @@
             <button type="button" class="btn btn-secondary" @click="removeCategory" data-bs-dismiss="modal">
               Thoát
             </button>
-            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal" @click="addCategory">
               Chọn
             </button>
           </div>
@@ -208,7 +223,6 @@
   </div>
 </template>
 <script setup>
-import { sentenceCase } from "sentence-case";
 import { Swiper, SwiperSlide } from 'swiper/vue';
 import 'swiper/swiper-bundle.css';
 import { useRouter } from "vue-router";
@@ -216,32 +230,38 @@ import ListCategory from "@/components/Admin/ListCategory.vue";
 import { useResource } from "@/stores/resource.store";
 import { useAdminStore } from "@/stores/admin.store";
 import { storeToRefs } from "pinia";
-import { onBeforeMount, reactive, watch, ref, computed } from "vue";
-import { getCategory } from "@/data.function/getData";
-import { addOutfit } from '@/data.function/postData';
+import { onBeforeMount, reactive, watch, ref, computed, toRaw } from "vue";
+import { getCategory, getUpdateOutfit } from "@/data.function/getData";
+import { addOutfit, updateOutfit } from '@/data.function/postData';
 import Notification from '@/components/Notification.vue'
 import Loading from '@/components/Loading.vue';
 import Result from '@/components/Admin/Result.vue';
 import { StringBuilder } from '@/utils/StringBuilder';
 import { Toast } from '@/utils/notification';
+import UpdateOutfit from './UpdateOutfit.vue';
+import { sortSizes } from '@/utils/util.function';
+import { isInclude } from '@/utils/ArrayMethod';
 const router = useRouter();
 const resource = useResource();
 const { category } = storeToRefs(resource);
 const admin = useAdminStore();
 const { choosedCategory } = storeToRefs(admin);
 const size = ref(["S", "M", "L", "XL", "XXL"]);
+const init = ref(false);
 const images = ref([]);
 const dialog = ref(false);
 const updateIndex = ref(-1);
+const deleteOutfitSize = ref([])
+const deleteSizes= ref([]);
 const selectedSize = reactive({
-  S: { checked: true, quantity: 0 },
-  M: { checked: true, quantity: 0 },
-  L: { checked: true, quantity: 0 },
+  S: { checked: false, quantity: 0 },
+  M: { checked: false, quantity: 0 },
+  L: { checked: false, quantity: 0 },
   XL: { checked: false, quantity: 0 },
   XXL: { checked: false, quantity: 0 },
 });
 const outfitPieceSize = reactive({
-  S: { checked: true, quantity: 0 },
+  S: { checked: false, quantity: 0 },
   M: { checked: true, quantity: 0 },
   L: { checked: true, quantity: 0 },
   XL: { checked: false, quantity: 0 },
@@ -253,46 +273,102 @@ const requestPending = reactive({
   success: false,
   message: null,
 })
+const props = defineProps({
+  id: {
+    type: String,
+    required: true
+  }
+})
 const data = reactive({
-  tenTrangPhuc: "",
-  giaTien: 0,
-  moTa: "",
-  theLoai: 0,
-  tonKho: 0,
-  hasPiece: false,
-  hinhAnhs: [],
-  kichThuocs: [],
-  manhTrangPhucs: [],
+  outfit: [],
+  originOutfit: [],
+  category: {}
 });
 const outfitPiece = reactive({
+  id: "",
   tenTrangPhuc: "",
   giaTien: 0,
   hasPiece: false,
   kichThuocs: [],
+  deleteKichThuoc: []
 })
-onBeforeMount(() => {
-  getCategory().then((cat) => {
-    category.value = cat;
-  });
-});
-const isAccessary = computed(() => {
-  return !!choosedCategory.value[0]?.forAccessary;
-})
+const outfitStatic = ref({});
+//UPDATED: đã fix lỗi lấy outfit sau khgi get category dẫn đến lỗi không tìm thấy được category
+onBeforeMount(async () => {
+  const categories = await getCategory()
+  const updateOutfit = await getUpdateOutfit(props.id);
+  updateOutfit.tonKho = 0
+  data.outfit = Object.assign({}, updateOutfit)
+  data.originOutfit = JSON.parse(JSON.stringify(updateOutfit));
+  outfitStatic.value = JSON.parse(JSON.stringify(updateOutfit));
+  if (updateOutfit.kichThuocs[0]?.maKichThuoc != "NONE") {
+    updateOutfit.kichThuocs.forEach((item) => {
+      let size = item.maKichThuoc;
+      selectedSize[size].checked = true;
+      selectedSize[size].quantity = item.tonKho;
+    });
+  }
+  if (updateOutfit.kichThuocs[0].maKichThuoc == "NONE" && !updateOutfit.hasPiece) {
+    data.outfit.tonKho = Number(updateOutfit.kichThuocs[0].tonKho);
+    data.originOutfit.tonKho = Number(updateOutfit.kichThuocs[0].tonKho);
+  }
+  categories.forEach(item => {
+    if (choosedCategory.value.length == 0) {
+      let thisCategory = findCategoryById(item, data.outfit.theLoai);
+      if (thisCategory) {
+        choosedCategory.value.push(thisCategory);
+        data.category = thisCategory;
+      }
+    }
+  })
+  resource.setCategory(categories);
 
+  images.value = updateOutfit.hinhAnhs.map(item => {
+    return {
+      name: null,
+      img: item,
+      file: null,
+    }
+  })
+  init.value = true;
+});
+function findCategoryById(root, maLoai) {
+  if (root.maLoai == maLoai) {
+    return root;
+  }
+  if (root.children) {
+    for (const child of root.children) {
+      const result = findCategoryById(child, maLoai);
+      if (result) {
+        return result;
+      }
+    }
+  }
+  return null;
+}
+const isAccessary = computed(() => {
+  return !!data.category.forAccessary;
+})
 const notSize = computed(() => {
   return size.value.every(element => selectedSize[element].checked == false);
 })
 //UPDATED: fix lỗi khi chọn danh mục thì kích thước lại null
-watch(
-  choosedCategory,
+watch(() => data.category,
   (value) => {
-    if (value && value.length > 0) {
-      data.theLoai = value[0].maLoai;
-      if (isAccessary.value) {
-        data.kichThuocs = []
-        data.kichThuocs.push({ maKichThuoc: "NONE", tonKho: 0 });
-        data.manhTrangPhucs = [];
-        data.hasPiece = false;
+    if (value) {
+      data.outfit.theLoai = value.maLoai;
+      // không cho chạy lần đầu (lần gán dữ liệu)
+      if (isAccessary.value && !init.value && value.maLoai != data.originOutfit.theLoai) {
+        data.outfit.kichThuocs = []
+        data.outfit.kichThuocs.push({ maKichThuoc: "NONE", tonKho: 0 });
+        data.outfit.manhTrangPhucs = [];
+        data.outfit.hasPiece = false;
+        init.value = false;
+      } 
+      //Nếu chọn lại cái cũ 
+      if (value.maLoai == data.originOutfit.theLoai) {
+        data.outfit.kichThuocs = JSON.parse(JSON.stringify(data.originOutfit.kichThuocs));
+        data.outfit.tonKho =  Number(data.outfit.kichThuocs[0].tonKho)
       }
     }
   },
@@ -300,30 +376,63 @@ watch(
     deep: true,
   }
 );
-watch(selectedSize, value => {
-  if (size.value.every(element => value[element].checked == false)) {
-    data.kichThuocs = [];
+const updateSize = (size) => {
+  let thisOutfitSize = Object.assign({}, data.originOutfit.kichThuocs.find(item => item.maKichThuoc == size))
+  if (thisOutfitSize.tonKho != thisOutfitSize.soLuong) {
+    if (size == "NONE" && data.outfit.tonKho < thisOutfitSize.tonKho) {
+      Toast.fire({
+        icon: 'error',
+        title: `Không thể thiết lập số lượng nhỏ hơn ${thisOutfitSize.tonKho} khi tất cả trang phục chưa thu hồi`
+      })
+      data.outfit.tonKho = thisOutfitSize.tonKho;
+    } else if (size != "NONE" && selectedSize[size].quantity < thisOutfitSize.tonKho) {
+      Toast.fire({
+        icon: 'error',
+        title: `Không thể thiết lập số lượng nhỏ hơn ${thisOutfitSize.tonKho} khi tất cả trang phục chưa thu hồi`
+      })
+      selectedSize[size].quantity = thisOutfitSize.tonKho;
+    }
   }
-}, {
-  deep: true,
-})
-watch(() => data.manhTrangPhucs, value => {
-  // Nếu có mảnh trang phục và là lần đầu watcher đầu tiên (hasPiece sẽ false)
-  if (value.length > 0 && !data.hasPiece) {
-    data.kichThuocs = [];
-    data.kichThuocs.push({ maKichThuoc: "NONE", tonKho: 0 })
-    data.hasPiece = true;
-    data.giaTien = 0
-    data.tonKho = 0;
+}
+//FIXME: viết lại hàm này để kiểm tra tổng quát hết tất cả kích thước luôn. dùng outfitPiece
+const updatePieceSize = () => {
+  let thisOutfitSize = Object.assign({}, data.originOutfit.manhTrangPhucs.find(item => item.id == outfitPiece.id))
+  if (thisOutfitSize.kichThuocs.some(item => {
+    if (outfitPieceSize[item.maKichThuoc].quantity < item.tonKho && item.tonKho > item.soLuong) {
+      outfitPieceSize[item.maKichThuoc].quantity = item.tonKho;
+      return true;
+    }
+  })) {
+    Toast.fire({
+      icon: 'error',
+      title: `Không thể thiết lập số lượng nhỏ hơn khi tất cả trang phục chưa được thu hồi`
+    })
+    return false;
   }
-  else if (value.length == 0) {
-    data.kichThuocs = []
-    data.hasPiece = false;
+  return true;
+}
+watch(selectedSize, () => {
+  if (notSize.value)
+    data.outfit.kichThuocs = [];
 
+}, {
+  deep: true,
+})
+watch(() => data.outfit.manhTrangPhucs, value => {
+  if (value.length > 0 && !data.outfit.hasPiece) {
+    data.outfit.kichThuocs = [];
+    data.outfit.kichThuocs.push({ maKichThuoc: "NONE", tonKho: 0 })
+    data.outfit.hasPiece = true;
+    data.outfit.tonKho = 0;
+  }
+  else if (value.length == 0 && data.outfit.hasPiece) {
+    data.outfit.kichThuocs = []
+    data.outfit.hasPiece = false;
   }
 }, {
   deep: true,
 })
+
 watch(requestPending, value => {
   if (value.error)
     setTimeout(() => {
@@ -343,20 +452,13 @@ const validateRoles = {
   require: value => !!value || "Không thể để trống",
   numberRequired: value => !isNaN(value) || "Vui lòng nhập giá tiền hợp lệ"
 }
-const resetData = () => {
-  data.tenTrangPhuc = "";
-  data.giaTien = 0;
-  data.moTa = "";
-  data.theLoai = 0;
-  data.hinhAnhs = [];
-  data.kichThuocs = [];
-  data.manhTrangPhucs = [];
-}
 const updatePiece = (index) => {
   updateIndex.value = index;
-  outfitPiece.tenTrangPhuc = data.manhTrangPhucs[index].tenTrangPhuc;
-  outfitPiece.giaTien = data.manhTrangPhucs[index].giaTien;
-  outfitPiece.kichThuocs = data.manhTrangPhucs[index].kichThuocs;
+  outfitPiece.id = data.outfit.manhTrangPhucs[index].id;
+  outfitPiece.tenTrangPhuc = data.outfit.manhTrangPhucs[index].tenTrangPhuc;
+  outfitPiece.giaTien = data.outfit.manhTrangPhucs[index].giaTien;
+  outfitPiece.kichThuocs = data.outfit.manhTrangPhucs[index].kichThuocs;
+  outfitPiece.deleteKichThuoc = data.outfit.manhTrangPhucs[index].deleteKichThuoc;
   //reset status sizes
   Object.keys(outfitPieceSize).forEach(key => outfitPieceSize[key].checked = false);
   // add size for update
@@ -365,6 +467,9 @@ const updatePiece = (index) => {
     outfitPieceSize[outfitSize.maKichThuoc].quantity = outfitSize.tonKho;
   })
   dialog.value = true;
+}
+const addCategory = () => {
+  data.category = JSON.parse(JSON.stringify(choosedCategory.value.at(0)));
 }
 const removeCategory = () => {
   admin.resetCategory();
@@ -379,34 +484,59 @@ const uploadImages = (event) => {
     });
   });
 };
+const thisImage = reactive({
+  index: 0,
+  remove: []
+})
+const checkImage = (index) => {
+  thisImage.index = index;
+}
+const removeImage = () => {
+  thisImage.remove.push(images.value.at(thisImage.index));
+  images.value.splice(thisImage.index, 1);
+  thisImage.index++;
+  if (thisImage.index >= images.value.length) thisImage.index = images.value.length - 1;
+}
+const deleteAll = () => {
+  images.value = [];
+}
 const resetImage = () => {
   images.value.forEach((element) => {
     URL.revokeObjectURL(element.img);
   });
-  images.value = [];
+  thisImage.index = 0;
+  thisImage.remove = [];
+  images.value = data.outfit.hinhAnhs.map(item => {
+    return {
+      name: null,
+      img: item,
+      file: null,
+    }
+  })
 };
 const back = () => {
   router.back();
 };
-const removePiece = () => {
-  data.manhTrangPhucs = data.manhTrangPhucs.filter(item => item != false);
+const removePiece = (item) => {
+  deleteOutfitSize.value.push(item.id);
+  data.outfit.manhTrangPhucs = data.outfit.manhTrangPhucs.filter(outfit => outfit.id != item.id);
 }
 const addPiece = (update = false) => {
   if (size.value.every(element => outfitPieceSize[element].checked == false)) {
-   Toast.fire({
-    icon: 'error',
-    title: 'Thông báo',
-    text: 'Nhập kích thước cho trang phục'
-   })
+    Toast.fire({
+      icon: 'error',
+      title: 'Thông báo',
+      text: 'Nhập kích thước cho trang phục'
+    })
     return;
   }
   let unvalidSize = size.value.some(element => outfitPieceSize[element].checked && (outfitPieceSize[element].quantity == 0 || !StringBuilder.isNumber(outfitPieceSize[element].quantity)))
   if (unvalidSize) {
     Toast.fire({
-    icon: 'error',
-    title: 'Thông báo',
-    text: 'Bạn phải nhập số lượng cho kích thước đã chọn'
-   })
+      icon: 'error',
+      title: 'Thông báo',
+      text: 'Bạn phải nhập số lượng cho kích thước đã chọn'
+    })
   }
   if (StringBuilder.isEmpty(outfitPiece.tenTrangPhuc) || !StringBuilder.isNumber(outfitPiece.giaTien)) {
     return;
@@ -416,19 +546,34 @@ const addPiece = (update = false) => {
       return { maKichThuoc: key, tonKho: outfitPieceSize[key].quantity };
   }).filter(item => item != undefined);
   outfitPiece.kichThuocs = kichThuocs;
-  let temp = Object.assign({}, outfitPiece)
+  let temp = JSON.parse(JSON.stringify(outfitPiece))
   if (updateIndex.value != -1 && update) {
-    data.manhTrangPhucs[updateIndex.value] = temp;
+    if (!updatePieceSize()) return;
+    let dataDump = JSON.parse(JSON.stringify(outfitStatic.value))
+    let diffSize = dataDump.manhTrangPhucs.find(item => item.id == temp.id && !isInclude(item.kichThuocs.map(size => size.maKichThuoc), temp.kichThuocs.map(size => size.maKichThuoc)))
+    if (diffSize) {
+      let deleteSize = diffSize.kichThuocs.filter(size => !temp.kichThuocs.some(s => s.maKichThuoc == size.maKichThuoc))
+      if (deleteSize.length) {
+        temp.deleteKichThuoc = [];
+        deleteSize.forEach(size => {
+          temp.deleteKichThuoc.push(size.maKichThuoc);
+        })
+      }
+    } else {
+      temp.deleteKichThuoc = [];
+    }
+    data.outfit.manhTrangPhucs[updateIndex.value] = temp;
   } else
-    data.manhTrangPhucs.push(temp);
-  updateIndex.value = -1;
+    data.outfit.manhTrangPhucs.push(temp);
   resetOutfitPiece();
 }
-
 const resetOutfitPiece = () => {
+  outfitPiece.id = "";
   outfitPiece.tenTrangPhuc = "";
   outfitPiece.giaTien = 0;
   outfitPiece.kichThuocs = [];
+  updateIndex.value = -1;
+
 }
 const addOufitHandle = () => {
   if (choosedCategory.value.length > 1 || choosedCategory.value.length == 0) {
@@ -440,7 +585,7 @@ const addOufitHandle = () => {
     return;
   }
   //Kiểm tra forAccessory ở đây. Nếu không phải đạo cụ, không có các mảnh trang phục, bắt buộc phải có số lượng của kích thước
-  if (notSize.value && !isAccessary.value && data.manhTrangPhucs.length == 0) {
+  if (notSize.value && !isAccessary.value && data.outfit.manhTrangPhucs.length == 0) {
     alert("Bạn phải chọn kích thước hoặc nhập số lượng");
     return;
   }
@@ -449,43 +594,96 @@ const addOufitHandle = () => {
     alert("Bạn phải nhập số lượng cho đạo cụ");
     return;
   }
-  // Nếu là trang phục cho thuê cả bộ (không phải đạo cụ và không chứa mảnh trang phục)
-  if (data.manhTrangPhucs.length == 0 && !isAccessary.value) {
+  // Trường hợp đó là phụ kiện hoặc trang phục có mảnh chuyển sang cái trang phục đơn (tức là lúc đầu kích thước là NONE )
+  if (data.outfit.manhTrangPhucs.length == 0 && !isAccessary.value && data.originOutfit.kichThuocs.length ==1) {
     let size = Object.keys(selectedSize).map(key => {
       if (selectedSize[key].checked == true)
         return { maKichThuoc: key, tonKho: selectedSize[key].quantity };
     }).filter(item => item != undefined);
     if (!notSize.value) {
       if (size.some(item => item.tonKho <= 0)) {
-        console.log(size);
         alert("Bạn phải nhập số lượng cho tất cả kích thước");
         return;
       }
     }
-    size.forEach(item => {
-      data.kichThuocs.push(item);
-    })
+    data.outfit.kichThuocs = size;
   }
-  // Nếu là đạo cụ thì lấy số lượng gán cho trang phục
-  if (isAccessary.value) {
-    data.kichThuocs[0].tonKho = data.tonKho;
-  }
-  data.tenTrangPhuc = sentenceCase(data.tenTrangPhuc);
-  requestPending.pending = true;
-  addOutfit(data, images.value.map(item => item.file)).then(response => {
-    requestPending.pending = false;
-    if (response.status == 200) {
-      admin.resetCategory();
-      resetData();
-      resetImage();
-      requestPending.success = true;
-      requestPending.message = "Thêm sản phẩm thành công";
-    } else {
-      requestPending.error = true;
-      requestPending.message = "Thêm sản phẩm thất bại";
+  //------------------------------------------------------------------------------------------------------------------------------------
+  // Trường hợp ban đầu trang phục đó là trang phục bộ, đang muốn kiểm tra thay đổi kích thước
+  if(data.outfit.manhTrangPhucs.length == 0 && data.originOutfit.kichThuocs.length >=1 && data.originOutfit.kichThuocs[0].maKichThuoc !="NONE") {
+    console.log("log here");
+    let size = Object.keys(selectedSize).map(key => {
+      if (selectedSize[key].checked == true)
+        return { maKichThuoc: key, tonKho: selectedSize[key].quantity };
+    }).filter(item => item != undefined);
+    if (!notSize.value) {
+      if (size.some(item => item.tonKho <= 0)) {
+        alert("Bạn phải nhập số lượng cho tất cả kích thước");
+        return;
+      }
     }
+    let outfitData = JSON.parse(JSON.stringify(data.outfit))
+    let originOutfit = JSON.parse(JSON.stringify(data.originOutfit))
+    size.forEach(item => {
+      let index = outfitData.kichThuocs.findIndex(dataSize=> dataSize.maKichThuoc == item.maKichThuoc);
+      if(index!=-1) {
+        data.outfit.kichThuocs[index].tonKho = item.tonKho;
+      } else{
+          data.outfit.kichThuocs.push(item);
+      }
+    })
+    let deleteSize = originOutfit.kichThuocs.filter(originSize=> !size.some(i=> i.maKichThuoc == originSize.maKichThuoc));
+      if(deleteSize.length) {
+        let destroyedSize = deleteSize.map(item=>item.maKichThuoc);
+        deleteSizes.value = destroyedSize;
+        data.outfit.kichThuocs = data.outfit.kichThuocs.filter(size => !destroyedSize.includes(size.maKichThuoc));
+      }
+  }
+//---------------------------------------------------------------------------------------------------------------------------------------------
 
-  })
+  //NOTE: tạo một đối tượng mới nhân các thuộc tính của data.outfit
+  let trangPhuc = Object.assign({}, data.outfit);
+  if (JSON.stringify(data.outfit.manhTrangPhucs) == JSON.stringify(data.originOutfit.manhTrangPhucs)) {
+    trangPhuc.manhTrangPhucs = [];
+  }
+  else {
+    let update = data.outfit.manhTrangPhucs.filter(item => !data.originOutfit.manhTrangPhucs.some(o => JSON.stringify(o) == JSON.stringify(item)));
+    trangPhuc.manhTrangPhucs = update;
+    trangPhuc.deleteManhTrangPhuc = deleteOutfitSize.value;
+  }
+  // Nếu là đạo cụ và có sự thay đổi thì lấy số lượng gán cho trang phục
+  if (isAccessary.value && trangPhuc.tonKho != data.originOutfit.tonKho) {
+    trangPhuc.kichThuocs[0].tonKho = trangPhuc.tonKho;
+  }
+  // Nếu trang phục có kích thước không thay đổi gì thì chuyển kichThuoc = [] để không thực hiện cập nhật
+  if (JSON.stringify(data.outfit.kichThuocs) == JSON.stringify(data.originOutfit.kichThuocs)) {
+    trangPhuc.kichThuocs = [];
+  } else {
+    let update = data.outfit.kichThuocs.filter(item => !data.originOutfit.kichThuocs.some(o => JSON.stringify(o) == JSON.stringify(item)));
+    trangPhuc.kichThuocs = update;
+  }
+  trangPhuc.deleteKichThuoc = deleteSizes.value;
+  trangPhuc.tenTrangPhuc = trangPhuc.tenTrangPhuc.toLowerCase();
+  // requestPending.pending = true;
+  let uploadImg = images.value.map(item => item.file).filter(item => item);
+  let removeImg = thisImage.remove.length > 0 ? thisImage.remove.map(item => item.img) : null;
+  if (uploadImg.length == 0) uploadImg = null;
+  if(!trangPhuc.deleteKichThuoc) trangPhuc.deleteKichThuoc = [];
+  console.log(trangPhuc);
+  updateOutfit(
+     trangPhuc,
+     uploadImg,
+     removeImg,
+   ).then((response) => {
+     requestPending.pending = false;
+     if (response.status == 200) {
+       requestPending.success = true;
+       requestPending.message = "Cập nhật sản phẩm thành công";
+     } else {
+       requestPending.error = true;
+       requestPending.message = "Cập nhật sản phẩm thất bại";
+     }
+   });
 }
 </script>
 <style scoped>
@@ -530,6 +728,12 @@ const addOufitHandle = () => {
   margin-bottom: 20px;
 }
 
+.add-outfit-header .header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
 .add-outfit-wrap .add-outfit-header {
   font-size: 20px;
   font-weight: bold;
@@ -566,11 +770,11 @@ const addOufitHandle = () => {
 }
 
 /* .add-outfit-image {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-} */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  } */
 
 .add-outfit-image .upload-images-container {
   width: 200px;
@@ -600,11 +804,11 @@ const addOufitHandle = () => {
 }
 
 /* #review-img > .review-wrap-item {
-  width: 100%;
-  height: 300px;
-  display: block;
-  margin-bottom: 10px;
-} */
+    width: 100%;
+    height: 300px;
+    display: block;
+    margin-bottom: 10px;
+  } */
 #review-img img {
   display: block;
   width: 100%;
@@ -843,6 +1047,6 @@ ul.menu>li> {
 }
 
 /* .accessary-content {
-  background-color: #435c70 !important;
-} */
+    background-color: #435c70 !important;
+  } */
 </style>

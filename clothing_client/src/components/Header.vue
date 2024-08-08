@@ -81,8 +81,8 @@
             <span class="cart-icon"
               ><i class="fa fa-shopping-cart" aria-hidden="true"></i></span
           ></Link>
-          <div v-if="user.gioHangs || cartItems.length" class="cart-number">
-            <span>{{ user.gioHangs || cartItems.length }}</span>
+          <div v-if="cartItems.length" class="cart-number">
+            <span>{{ cartItems.length }}</span>
           </div>
         </div>
       </div>

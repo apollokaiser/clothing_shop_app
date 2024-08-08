@@ -15,7 +15,7 @@
                 <h3>{{ props.outfit.tenTrangPhuc }} </h3>
                 </Link>
                 <div class="product-action col-sm-12">
-                    <div class="product-price col-sm-6">{{ convertToVND(props.outfit.giaTien)}}</div>
+                    <div class="product-price col-sm-6">{{price}}</div>
                     <div class="product-add-cart d-flex col-sm-6">
                         <span>Thêm giỏ hàng</span>
                         <i class="fa fa-cart-arrow-down ms-1" aria-hidden="true"></i>
@@ -40,7 +40,12 @@ const props = defineProps({
     }
 })
 const staticTransition = computed(() => props.outfit.hinhAnhs?.length == 1)
+const price = computed(() => {
+    if(props.outfit.hasPiece) return "Xem thêm"
+    else return convertToVND(props.outfit.giaTien)
+    })
 </script>
+ 
 
 <style scoped>
 .product-container {

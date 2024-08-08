@@ -201,7 +201,7 @@ const routes = [
           {
             path:'cap-nhat-trang-phuc/:id',
             name:'update-outfit',
-            component: () => import("@/components/Admin/OutfitManagement/UpdateOutfit.vue"),
+            component: () => import("@/components/Admin/OutfitManagement/update.vue"),
             props: route => ({...route.params }),
           },
         ]

@@ -47,6 +47,9 @@ const validAddress = computed(()=>{
   return false;
 })
 onBeforeMount(() => {
+if(!isLoggedIn.value) {
+  step.value = 0;
+}
   if (isLoggedIn.value) {
     if (validAddress.value !=false) {
       order.value.diaChiNguoiNhan = validAddress.value.diaChiNguoiNhan;

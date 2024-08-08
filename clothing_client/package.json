@@ -20,6 +20,7 @@
     "node-html-parser": "^6.1.13",
     "npm": "^10.8.1",
     "pinia": "^2.1.7",
+    "sentence-case": "^4.0.0",
     "sweetalert2": "^11.12.2",
     "swiper": "^11.1.4",
     "unorm": "^1.6.0",

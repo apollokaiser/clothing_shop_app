@@ -16,6 +16,7 @@
 import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useAdminStore } from '@/stores/admin.store';
 import { storeToRefs } from 'pinia';
+import Swal from 'sweetalert2';
 const admin = useAdminStore()
 const {choosedCategory} = storeToRefs(admin)
 const props = defineProps({
@@ -26,6 +27,11 @@ const props = defineProps({
     single:{
         type: Boolean,
         required: false
+    },
+    accessary:{
+        type: Boolean,
+        required: false,
+        default: true
     }
 })
 const init = ref(false);
@@ -60,6 +66,16 @@ const chooseCategory = () =>{
         chooseTimer = null;
         return;
     } 
+    if(!props.accessary && props.item.forAccessary) {
+        let text = '<p>Bạn không thể chọn danh mục đạo cụ biểu diễn trong các trường hợp sau:</p><div><ul><li> <strong>Trang phục cập nhật đang chứa các phần trang phục</strong> </li></ul></div>'
+        Swal.fire({
+            title: 'Cảnh báo',
+            html: text,
+            icon: 'warning',
+            confirmButtonText: 'OK'
+        })
+        return;
+    }
     chooseTimer = setTimeout(()=>{
         if(props.single && choosedCategory.value.length > 0) { //kiểm tra xem đang chọn cho trang phục và đã có chọn chưa
             //nếu đã có chọn rồi
@@ -81,12 +97,12 @@ watch(choose, value=>{
     //kiểm tra xem có phải là khởi tạo ban đầu không --> ko làm gì cả
     if(!init.value){ 
         if(value==true){
-            if(choosedCategory.value.length > 0 && props.single ==true) {
+            if(choosedCategory.value.length > 0 && props.single == true) {
                alert("Chỉ chọn 1")
             }else 
                 admin.pushCategory(props.item)
         } else {
-            if(props.single ==true) admin.resetCategory();
+            if(props.single == true) admin.resetCategory();
            else admin.removeCategory(props.item.maLoai);
     }
 }

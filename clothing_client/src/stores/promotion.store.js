@@ -40,6 +40,7 @@ export const usePromotionStore = defineStore("promotion", () => {
             if(element.id == element.parentId) 
                 outfitPiece = mainOutfit;
             else {
+                console.log(mainOutfit);
                 outfitPiece = mainOutfit.manhTrangPhucs.find(piece=> piece.id == element.id);
                 
             }
