@@ -217,7 +217,7 @@ const accessPending = (admin=false) => {
     if (admin==true) {
       router.push({name:'content'})
     } else {
-      router.push("/")
+      router.push({name:"homePage"})
     }
   }, 2000);
 };

@@ -17,6 +17,7 @@ import { computed, onBeforeMount, ref, watch } from 'vue';
 import { useAdminStore } from '@/stores/admin.store';
 import { storeToRefs } from 'pinia';
 import Swal from 'sweetalert2';
+import { Toast } from '@/utils/notification';
 const admin = useAdminStore()
 const {choosedCategory} = storeToRefs(admin)
 const props = defineProps({
@@ -80,7 +81,10 @@ const chooseCategory = () =>{
         if(props.single && choosedCategory.value.length > 0) { //kiểm tra xem đang chọn cho trang phục và đã có chọn chưa
             //nếu đã có chọn rồi
             if(!choose.value == true) { // nếu đang muốn chọn thêm, tức là trang thái choose trước đó đang chưa chọn (false)
-                alert("chỉ chọn 1")
+                Toast.fire({
+                    icon: 'error',
+                    title: 'Bạn chỉ được chọn 1 !'
+                })
             } else {
                 init.value = false;
                 choose.value = !choose.value;

@@ -35,7 +35,8 @@ watch(promotionCode, (value)=>{
     immediate: true,
 })
 watch(totalDiscount, value=>{
-    order.value.tongUuDai = value == 0? 0 : value;
+    console.log(value);
+    order.value.tongUuDai = value == 0 ? 0 : value;
 })
     return {orderDetail,address, order };
 });

@@ -25,32 +25,32 @@
                 <div class="d-flex justify-content-between">
                   <div class="mb-3 col-sm-5">
                     <label for="ngayBatDau" class="form-label">Ngày bắt đầu</label>
-                    <input v-model="promotion.ngayBatDau" type="date" class="form-control" id="ngayBatDau" />
+                    <input v-model="promotion.ngayBatDau" type="date" :min="minDate" class="form-control" id="ngayBatDau" />
                   </div>
                   <div class="mb-3 col-sm-5">
                     <label for="ngayKetThuc" class="form-label">Ngày kết thúc</label>
-                    <input v-model="promotion.ngayKetThuc" type="date" class="form-control" id="ngayKetThuc" />
+                    <input v-model="promotion.ngayKetThuc" type="date" :min="minDate" class="form-control" id="ngayKetThuc" />
                   </div>
                 </div>
                 <div class="d-flex justify-content-between">
                   <div class="mb-3 col-sm-5">
                     <label for="soLuongToiThieu" class="form-label">Số lượng tối thiểu</label>
-                    <input v-model="promotion.soLuongToiThieu" type="number" class="form-control"
+                    <input v-model="promotion.soLuongToiThieu" :disabled="promotion.giaTriToiThieu >0" type="number" class="form-control"
                       id="soLuongToiThieu" />
                   </div>
                   <div class="mb-3 col-sm-5">
                     <label for="giaTriToiThieu" class="form-label">Giá trị tối thiểu</label>
-                    <input v-model="promotion.giaTriToiThieu" type="number" class="form-control" id="giaTriToiThieu" />
+                    <input v-model="promotion.giaTriToiThieu" :disabled="promotion.soLuongToiThieu > 0" type="number" class="form-control" id="giaTriToiThieu" />
                   </div>
                 </div>
                 <div class="d-flex justify-content-between flex-wrap">
                   <div class="mb-3 col-sm-5">
                     <label for="phanTramGiam" class="form-label">Phần trăm giảm</label>
-                    <input v-model="promotion.phanTramGiam" type="number" class="form-control" id="phanTramGiam" />
+                    <input v-model="promotion.phanTramGiam" :disabled="promotion.giamTien > 0" type="number" class="form-control" id="phanTramGiam" />
                   </div>
                   <div class="mb-3 col-sm-5">
                     <label for="giaTriGiam" class="form-label">Giá trị giảm</label>
-                    <input v-model="promotion.giamTien" type="number" class="form-control" id="giaTriGiam" />
+                    <input v-model="promotion.giamTien" :disabled="promotion.phanTramGiam > 0" type="number" class="form-control" id="giaTriGiam" />
                   </div>
                   <div class="mb-3 col-sm-5">
                     <label for="giamToiDa" class="form-label">Giá trị tối đa</label>
@@ -58,11 +58,19 @@
                   </div>
                 </div>
               </form>
-              <div class="mb-3 col-sm-5 d-flex flex-column">
-                <label for="" class="form-label">Chọn danh mục</label>
-                <button type="submit" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#chooseCategory">
-                  Thêm ngay
-                </button>
+              <div class="mb-3 col-sm-12 d-flex justify-content-between align-items-center">
+                <div class="col-sm-5 d-flex flex-column">
+                  <label for="" class="form-label">Chọn danh mục</label>
+                  <button type="submit" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#chooseCategory">
+                    Thêm ngay
+                  </button>
+                </div>
+                <div class="selected-category col-sm-5 d-flex flex-column">
+                  <div>Danh mục được chọn:</div>
+                  <v-chip-group selected-class="text-primary" column>
+                    <v-chip v-for="category in promotionCategory" :key="category" @click:close="removeCategory(category.maLoai)" closable class="ma-2" color="teal"> {{ category.tenLoai }} </v-chip>
+                  </v-chip-group>
+                </div>
               </div>
             </div>
             <div class="description-content col-sm-5" v-html="htmlContent"></div>
@@ -71,7 +79,7 @@
             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
               Close
             </button>
-            <button @click="savePromotion" type="button" class="btn btn-primary">
+            <button @click.prevent="savePromotion" type="button" class="btn btn-primary">
               Lưu
             </button>
           </div>
@@ -95,7 +103,7 @@
             <button type="button" class="btn btn-secondary" @click="removeAllCategory" data-bs-dismiss="modal">
               Thoát
             </button>
-            <button type="button" class="btn btn-primary" data-bs-dismiss="modal">
+            <button type="button" class="btn btn-primary" data-bs-dismiss="modal" @click.prevent="addPromotionCategory">
               Chọn
             </button>
           </div>
@@ -159,7 +167,7 @@ ul.menu>li> {
 }
 </style>
 <script setup>
-import { onBeforeMount, reactive, ref, toRaw } from "vue";
+import { computed, onBeforeMount, reactive, ref, toRaw } from "vue";
 import docx2html from "docx2html";
 import { parse } from "node-html-parser";
 import { useResource } from "@/stores/resource.store";
@@ -170,11 +178,13 @@ import { storeToRefs } from "pinia";
 import { getCategory } from "@/data.function/getData";
 import { addPromotion } from "@/data.function/postData";
 import Swal from "sweetalert2";
+import { Toast } from "@/utils/notification";
 const resource = useResource();
 const admin = useAdminStore();
 const { choosedCategory } = storeToRefs(admin);
 const { category } = storeToRefs(resource);
 const htmlContent = ref(null);
+let checkBlank = ['tenKhuyenMai', 'moTa', 'noidungChinh'];
 const promotion = reactive({
   maKhuyenMai: "",
   tenKhuyenMai: "",
@@ -188,12 +198,27 @@ const promotion = reactive({
   giamTien: 0,
   giamToiDa: 0,
 });
+const minDate = ref(new Date().toISOString().split('T')[0]);
+const promotionCategory = ref([]);
 onBeforeMount(() => {
   getCategory().then((cat) => {
     category.value = cat;
   });
 });
-
+const checkPromotionDate = computed(()=>{
+  const now = new Date();
+  console.log(new Date(promotion.ngayBatDau));
+  const startDate = new Date(promotion.ngayBatDau);
+  const endDate = new Date(promotion.ngayKetThuc);
+  return (now >= startDate || startDate > now) && now <= endDate;
+})
+const addPromotionCategory = () =>{
+  promotionCategory.value = JSON.parse(JSON.stringify(choosedCategory.value));
+}
+const removeCategory = (id) => {
+  choosedCategory.value = choosedCategory.value.filter(category => category.maLoai != id);
+  addPromotionCategory();
+}
 const getPromotion = (data) => {
   promotion.ngayBatDau = getDate(data[0]);
   promotion.ngayKetThuc = getDate(data[1]);
@@ -214,6 +239,18 @@ const getDate = (date) => {
 const status = reactive({
   addPromotionSuccess: false,
 });
+const isValidData = computed(()=>{
+  let isValid = Object.keys(promotion).some(key =>{
+    if(checkBlank.includes(key) && promotion[key] == "") return false;
+    return true;
+  })
+  if((promotion.soLuongToiThieu >0 && promotion.giaTriToiThieu >0) || (promotion.giamTien >0 && promotion.phanTramGiam >0)) {
+   isValid = false;
+  }
+  // trường hợp nãy sẽ catch nếu cả 2 bằng 0
+  if(promotion.giamTien == promotion.phanTramGiam) isValid = false;
+  return isValid;
+})
 const convertToHTML = (event) => {
   const file = event.target.files[0];
   if (
@@ -245,6 +282,20 @@ const removeAllCategory = () => {
 };
 //FIXME: xem lại thêm khuyến mãi khi hết access token có trả về promotion_id không
 const savePromotion = () => {
+  if(!checkPromotionDate.value) {
+    Toast.fire({
+                icon: 'error',
+                title: 'Thời gian diễn ra khuyến mãi không hợp lệ !'
+            })
+            return;
+  }
+  if(!isValidData.value) {
+    Toast.fire({
+                icon: 'error',
+                title: 'Dữ liệu nhập không hợp lệ !'
+            })
+            return;
+  }
   promotion.maKhuyenMai = ""
   let savePromotion = toRaw(promotion);
   savePromotion.ngayBatDau =

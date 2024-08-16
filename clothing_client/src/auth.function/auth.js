@@ -82,3 +82,11 @@ export const changePasword = async(data) =>{
         return null;
     }
 }
+export const logout = async(token) => {
+    const response = await axios.get(`/user/logout?token=${token}`);
+    if(response.status === 200) {
+        return true;
+    } else {
+        return false;
+    }
+}

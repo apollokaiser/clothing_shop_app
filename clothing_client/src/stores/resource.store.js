@@ -15,7 +15,7 @@ export const useResource = defineStore("resource", ()=>{
         return category.value.find(item=>item.maLoai === id);
     }
     const getPromotion = (id) =>{
-        return promotions.value.find(item=>item.maKhuyenMai ==id);
+        return promotions.value.find(item=>item.maKhuyenMai == id);
 }
     const setPromotion = (data)=>{
         promotions.value = data;

@@ -32,7 +32,7 @@ export const getUpdateOutfit = async (id)=>{
     }
 }
 export const getCategory = async()=>{
-    const response = await axios.get("/danh-muc/danh-sach-danh-muc");
+    const response = await axios.get("/danh-muc/public/danh-sach-danh-muc");
     if(response.status === 200) {
         return response.data.data.theloais;
     } else {
@@ -126,6 +126,7 @@ export const getPromotions = async() => {
 }
 export const getCategoryInPromotion = async(id) => {
     const response = await axios.get(`/khuyen-mai/get-category-in-promotion?id=${id}`);
+    console.log(response);
     if(response.status === 200) {
         return response.data.data.category_ids;
     } else {
@@ -185,7 +186,7 @@ export const getAttenttion = async(ids) => {
 }
 export const getOutfitByCategory = async(id, page=0, size=12) => {
     if(!id) return null
-    const response = await axios.get(`/danh-muc/danh-sach-trang-phuc?id=${id}&page=${page}&size=${size}`);
+    const response = await axios.get(`/danh-muc/public/danh-sach-trang-phuc?id=${id}&page=${page}&size=${size}`);
     if(response.status === 200) {
         return response.data.data.trangphucs;
     } else {
@@ -220,11 +221,28 @@ export const getAllPromotion = async(page=0, size=6) => {
 }
 export const preparedOrder = async(cart) =>{
     const response = await axios.post(`/gio-hang/v2/prepared-order`, cart);
-    console.log(response);
     if(response.status === 202) {
         return true;
     } else {
         return false;
     }
 }
+export const canceledOrder = async() =>{
+    const response = await axios.get(`/gio-hang/v2/cancel-prepared-order`);
+    console.log("log in canceled order");
+    if(response.status === 202) {
+        return true;
+    } else {
+        return false;
+    }
+}
+export const getOrdersByKeyword = async(keyword) =>{
+    const response = await axios.get(`/don-thue/tim-kiem-don-thue?keyword=${keyword}`);
+    if(response.status === 200) {
+        return response.data.data.orders;
+    } else {
+        return null;
+    }
+}
+
 

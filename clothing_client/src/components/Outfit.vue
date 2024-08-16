@@ -45,7 +45,6 @@ const price = computed(() => {
     else return convertToVND(props.outfit.giaTien)
     })
 </script>
- 
 
 <style scoped>
 .product-container {

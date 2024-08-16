@@ -60,7 +60,7 @@ export const usePromotionStore = defineStore("promotion", () => {
         }
         if (paymentPromotion.value.length > 0) {
             let totalTemp = totalPrice.value - discount;
-            let promo = paymentPromotion.value.filter(promotion => cartCount.value >= promotion.soLuongToiThieu && totalTemp > promotion.giaTriToiThieu);
+            let promo = paymentPromotion.value.filter(promotion => cartCount.value >= promotion.soLuongToiThieu && totalTemp >= promotion.giaTriToiThieu);
             if (promo.length > 0) {
                 let max = {
                     price: 0,

@@ -2,7 +2,6 @@ import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import Admin from '@/views/Admin/Admin.vue'
 import { authStore } from '@/stores/user.store'
-
 const routes = [
   {
     path: '/',
@@ -62,17 +61,34 @@ const routes = [
         props: route => ({ ...route.params }),
       },
       {
-        path: 'thanh-toan/:uid/:slug',
+        path: 'thanh-toan',
         name: "payment",
-        component: () => import("@/components/Payment.vue"),
+        component: () => import("@/views/PaymentPage.vue"),
         props: route => ({ ...route.params }),
-        children: [
+        meta: { requiresAuth: true, transition: 'fade',checkOrder: true },
+        children:[
           {
-            path: 'thanh-toan-thanh-cong',
-            name: "order_success",
-            component: () => import("@/components/OrderSuccess.vue")
-          }
+            path:"thong-tin-thanh-toan/:uid/:slug",
+            name: "payment-info",
+            component: () => import("@/components/Payment.vue"),
+            props: route => ({ ...route.params }),
+            meta: { transition: 'fade',checkOrder: true }
+          },
+          {
+            path:"trang-thai-thanh-toan/:orderId",
+            name: "order-success",
+            component: () => import("@/components/OrderState.vue"),
+            props: route => ({ ...route.params }),
+            meta: { transition: 'fade',checkOrder: true }
+          },
         ]
+      },
+      {
+        path:"thong-tin-thue-trang-phuc/:uid/:slug",
+        name:"order-confirm",
+        component: () => import("@/components/Order.vue"),
+        props: route => ({ ...route.params }),
+        meta: { requiresAuth: true, transition: 'fade', checkOrder: true}
       },
       {
         path: '/danh-sach',
@@ -199,12 +215,24 @@ const routes = [
             component: () => import("@/components/Admin/OutfitManagement/AddOutfit.vue"),
           },
           {
+            path:'thong-tin-trang-phuc/:id',
+            name:'outfit-info',
+            component: () => import("@/components/Admin/OutfitManagement/OutfitInfo.vue"),
+            props: route => ({...route.params }),
+          },
+
+          {
             path:'cap-nhat-trang-phuc/:id',
             name:'update-outfit',
             component: () => import("@/components/Admin/OutfitManagement/update.vue"),
             props: route => ({...route.params }),
           },
         ]
+      },
+      {
+        path:'danh-muc-trang-phuc',
+        name:'admin-category',
+        component: () => import("@/components/Admin/OutfitManagement/Category.vue"),
       },
       {
         path:'khuyen-mai/danh-sach-khuyen-mai',
@@ -217,7 +245,18 @@ const routes = [
         component: () => import("@/components/Admin/PromotionManagement/PromotionDetail.vue"),
         props: route => ({...route.params }),
       },
-  
+      {
+        path:"/admin-other-tasks",
+        name: 'admin-other-tasks',
+        component: () => import("@/views/Admin/OtherTasks.vue"),
+        children:[
+          {
+            path:'banner',
+            name:'admin-banner',
+            component: () => import("@/components/Admin/BannerManager.vue"),
+          }
+        ]
+      }
     ]
   },
   {
@@ -246,12 +285,38 @@ router.beforeEach((to,from,next)=>{
   const auth = authStore();
   if (to.matched.some(record => record.meta.requiresAuth) && !auth.isLoggedIn) {
     next('/');
-  } else {
-    if(to.matched.some(record => record.meta.adminRequire) && !auth.isAdmin) {
+  } else if(to.matched.some(record => record.meta.adminRequire) && !auth.isAdmin) {
       next('/');
     }
+    // else if(from.matched.some(record => record.meta.checkOrder) && !to.matched.some( record => record.meta.checkOrder)) {
+    //   const cart = useCartStore();
+    //   if(to.name=="cart"){
+    //     cart.cancelPreOrder();
+    //     next();
+    //   }
+    //   else {
+    //     Swal.fire({
+    //       title: "Thông báo",
+    //       text: "Bạn đang đang thực hiện thuê trang phục,hủy ngay ?",
+    //       icon: "warning",
+    //       showCancelButton: true,
+    //       confirmButtonColor: "#3085d6",
+    //       cancelButtonColor: "#d33",
+    //       confirmButtonText: "Tiếp tục",
+    //       cancelButtonText: "Hủy ngay",
+    //       allowOutsideClick:false
+    //     }).then(result =>{
+    //       if(result.isDismissed) {
+    //         cart.cancelPreOrder();
+    //         next();
+    //       } else {
+    //         return false;
+    //         // next(from.fullPath);
+    //       }
+    //     })
+    //   }
+    // }
     next();
-  }
 })
 
 export default router

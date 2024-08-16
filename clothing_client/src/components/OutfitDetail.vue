@@ -43,7 +43,7 @@ onBeforeMount(() => {
     if (props.details) {
         outfit.value = props.details;
         outfitDisplay.name = outfit.value.tenTrangPhuc;
-        if(outfit.value.manhTrangPhucs) {
+        if(outfit.value.manhTrangPhucs.length) {
                 outfitDisplay.display = 
                                     outfit.value.manhTrangPhucs.find(item=> item.tinhTrang && item.kichThuocs.some(size=> size.soLuong != 0 && size.trangThai))
                 phanLoai.value = outfit.value.manhTrangPhucs;
@@ -57,7 +57,7 @@ onBeforeMount(() => {
         getOutFitDetail(props.id).then((res) => {
             outfit.value = res;
             outfitDisplay.name = outfit.value.tenTrangPhuc;
-            if(outfit.value.manhTrangPhucs) {
+            if(outfit.value.manhTrangPhucs.length) {
                 outfitDisplay.display = 
                                     outfit.value.manhTrangPhucs.find(item=> item.tinhTrang && item.kichThuocs.some(size=> size.soLuong != 0 && size.trangThai))
                 phanLoai.value = outfit.value.manhTrangPhucs;
@@ -71,10 +71,15 @@ onBeforeMount(() => {
     }
 });
 const outfitStatus = computed(() => {
-    let thisOutfit = outfitDisplay.display.kichThuocs.find(size => size.maKichThuoc == checkOutFit.checkSize);
-    if (outfitDisplay.display.tinhTrang) {
-        if (thisOutfit?.soLuong == 0) return -1;
-        if (!thisOutfit?.trangThai) return 0;
+    if (outfitDisplay.display?.tinhTrang) {
+        if(outfitDisplay.display.kichThuocs.length){
+            console.log("log here");
+            let thisOutfit = outfitDisplay.display.kichThuocs.find(size => size.maKichThuoc == checkOutFit.checkSize);
+            console.log(thisOutfit);
+            if (thisOutfit?.soLuong == 0) return -1;
+            else if (!thisOutfit?.trangThai) return 0;
+            else return 1;
+        }          
         else return 1;
     }
     else return 0;
@@ -88,12 +93,12 @@ const hasOutfitPieces = computed(() => {
     return false;
 });
 const showSize = computed(() => {
-    if (outfitDisplay.display.kichThuocs[0] != "NONE")
+    if (outfitDisplay.display?.kichThuocs[0].maKichThuoc != "NONE")
         return toRaw(outfitDisplay.display.kichThuocs).length > 0;
     return false;
 });
 const price = computed(() => {
-    if (!outfitDisplay.display.giaTien) return "Chọn để xem";
+    if (!outfitDisplay.display?.giaTien) return "Chọn để xem";
     return convertToVND(outfitDisplay.display.giaTien);
 });
 
@@ -149,6 +154,14 @@ const chooseOutfitSize = (id) => {
         })
         return;
     }
+    console.log(outfitDisplay.display.kichThuocs.find(item=> item.maKichThuoc == id).trangThai);
+        if(!outfitDisplay.display.kichThuocs.find(item=> item.maKichThuoc == id).trangThai){
+            Toast.fire({
+                icon: "error",
+                title: "Sản phẩm đã ngừng cho thuê!"
+            })
+            return;
+        }
     if (outfitDisplay.display.kichThuocs.find(size => size.maKichThuoc == id).soLuong == 0) {
         Toast.fire({
             icon: "error",

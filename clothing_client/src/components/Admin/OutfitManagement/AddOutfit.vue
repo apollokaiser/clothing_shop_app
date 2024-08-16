@@ -468,7 +468,10 @@ const addOufitHandle = () => {
   }
   // Nếu là đạo cụ thì lấy số lượng gán cho trang phục
   if (isAccessary.value) {
-    data.kichThuocs[0].tonKho = data.tonKho;
+    if(data.kichThuocs.length==0) {
+      data.kichThuocs.push({ maKichThuoc: "NONE", tonKho: 0 })
+    }
+    data.kichThuocs[0].tonKho = data.tonKho ? data.tonKho : 0;
   }
   data.tenTrangPhuc = sentenceCase(data.tenTrangPhuc);
   requestPending.pending = true;

@@ -6,9 +6,10 @@ export function validateEmail(email) {
       );
 }
 export function validatePassword(password, name = null) {
-    if(!password) return false;
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{8,}$/;
+    if(!password || password=="") return false;
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)[a-zA-Z\d]{7,}$/;
     if (!passwordRegex.test(password)) {
+        console.log("error hêre");
         return false;
     }
     if (name && password.includes(name.toLowerCase())) {
@@ -20,6 +21,6 @@ export function validatePassword(password, name = null) {
     return true;
 }
 export function validatePhoneNumber(phone) {
-    if(!phone) return false;
+    if(!phone || phone =="") return false;
     return /(03|05|07|08|09|01[2|6|8|9])+([0-9]{8})\b/.test(phone);
 }

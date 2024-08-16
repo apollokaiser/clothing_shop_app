@@ -1,14 +1,18 @@
 import { defineStore, storeToRefs } from "pinia";
 import { ref, computed, watch } from "vue";
-import { getCart, getCartItems } from "@/data.function/getData";
+import { canceledOrder, getCart, getCartItems } from "@/data.function/getData";
 import { addCart as insertCart, updateCart, updateOutfitInCart, deleteCart } from "@/data.function/postData";
 import { authStore } from "./user.store";
+import { useRouter } from "vue-router";
 import { Toast } from "@/utils/notification";
+import { convertToSlug } from "@/utils/util.function";
 export const useCartStore = defineStore("cart", () => {
+    const router = useRouter();
     const auth = authStore();
     const { isLoggedIn, user } = storeToRefs(auth);
     const cartItems = ref([])
     const cartDetail = ref([])
+    const preOrder = ref({});
     let updateTimer = null;
     const deleteCartItems = ref({})
     const insertCartItems = ref({})
@@ -36,22 +40,30 @@ export const useCartStore = defineStore("cart", () => {
         return cartItems.value.length > 0 ? cartItems.value.map(item => item.quantity).reduce((total, item) => total + item) : 0;
 
     })
+    const getCartInstance = (value) =>{
+        getCart(value).then((response) => {
+            if (response) {
+                response.cart_items.forEach(element => {
+                    element.check = true;
+                    element.promotion = null;
+                    element.validPromoCode = null;
+                    element.discount = 0
+                })
+                cartItems.value = response.cart_items;
+                cartDetail.value = response.cart_details;
+                if(response.prepare_cart && response.prepare_cart.carts.length >0) {
+                    preOrder.value = response.prepare_cart;
+                    // router.push({name:"order-confirm", params:{uid:value, slug:convertToSlug(user.value.name)}})
+                }
+            }
+        })
+    }
     //UPDATED: Fix lỗi khi remove cart item thì watch được gọi dẫn đến cart item được gán = response, vốn dĩ watch này chỉ được gọi khi mới load trang 
     //UPDATED: Cập nhật fix UPDATED phía trên, watcher này bây giờ sẽ được listenter mỗi khi có sự thay đổi trang phục trong giỏ hàng (cả insert và update), trừ trường hợp chỉnh sửa các thông tin mà không làm thay đổi số lượng sản phẩm cart
-    watch(() => user.value.gioHangs, (value) => {
-        if (value && user.value.gioHangs > 0) {
-            getCart(user.value.uid).then((response) => {
-                if (response) {
-                    response.cart_items.forEach(element => {
-                        element.check = true;
-                        element.promotion = null;
-                        element.validPromoCode = null;
-                        element.discount = 0
-                    })
-                    cartItems.value = response.cart_items;
-                    cartDetail.value = response.cart_details;
-                }
-            })
+    watch(() => user.value.uid, (value) => {
+        console.log(value);
+        if(value){
+            getCartInstance(value);
         }
     })
     watch(() => user.value.email, (newValue, oldValue) => {
@@ -234,7 +246,11 @@ export const useCartStore = defineStore("cart", () => {
         if (cartItems.value.length == 0)
             localStorage.removeItem('CART_')
     }
-    return { cartItems, totalPrice, cartDetail, cartCount, loadCartInstance, addCart, removeCart, checkCart, changeCartItemSize, clearCart, changeCartItemId, changeStatus }
+    const cancelPreOrder = () =>{
+        preOrder.value = {};
+        canceledOrder().then(res=>res);
+    }
+    return { cartItems, totalPrice, cartDetail, cartCount,preOrder, loadCartInstance, addCart, removeCart, checkCart, changeCartItemSize, clearCart, changeCartItemId, changeStatus,getCartInstance,cancelPreOrder }
 })
 
 class Cart {

@@ -38,7 +38,7 @@ export const addCart = async(cartItem) => {
     }
 }
 export const updateCart = async(cart) => {
-    const response = await axios.put(`/gio-hang/v2/cap-nhat-gio-hang`, cart) 
+    const response = await axios.post(`/gio-hang/v2/cap-nhat-gio-hang`, cart) 
     if (response.status && response.status === 200) {
         return true;
     } else {
@@ -46,7 +46,7 @@ export const updateCart = async(cart) => {
     }
 }
 export const updateOutfitInCart = async(newItem, oldItem) => {
-    const response = await axios.put(`/gio-hang/v2/cap-nhat-gio-hang`, {
+    const response = await axios.post(`/gio-hang/v2/cap-nhat-gio-hang`, {
         newItem,oldItem
     }) 
     if (response.status && response.status === 200) {
@@ -56,16 +56,16 @@ export const updateOutfitInCart = async(newItem, oldItem) => {
     }
 }
 export const deleteCart = async(cart) => {
-    const response = await axios.delete(`/gio-hang/v2/xoa-gio-hang`, cart) 
+    const response = await axios.post(`/gio-hang/v2/xoa-gio-hang`, cart) 
     if (response.status && response.status === 200) {
         return true;
     } else {
         return response;
     }
 }
-export const saveOrder = async (cartItem, cartDetail, orderDetail, user = null) => {
+export const saveOrder = async (cartItem, cartDetail, orderDetail, user = null, paymentMethod=1) => {
     let order = {
-        tenNguoiNhan: orderDetail.tenNguoiNhan,
+        tenNguoiNhan: orderDetail.tenNguoiNhan.trim(),
         sdtNguoiNhan: orderDetail.sdtNguoiNhan,
         diaChiNguoiNhan: orderDetail.diaChiNguoiNhan,
         ghiChu: "",
@@ -99,25 +99,30 @@ export const saveOrder = async (cartItem, cartDetail, orderDetail, user = null) 
     })
     order.chiTiet = listOrderDetail;
     if (user) {
-        const response = await axios.post("/thanh-toan/thanh-toan-khach-hang", {
-            order
-        })
-        if (response.status == 200) {
-            return response.data;
+        if(paymentMethod ==1){
+            const response = await axios.post("/thanh-toan/thanh-toan-khach-hang", {
+                order
+            })
+            if (response.status == 200) {
+                return response.data;
+            } else {
+                return response;
+            }
         } else {
-            return response;
+            order.payment = "ONLINE";
+            let deposit = order.tongThue /2;
+            let depositAmount = Math.ceil(deposit / 1000) * 1000;
+            const response = await axios.post(`/payment/dat-coc-don-thue?amount=${depositAmount}&bandCode=NCB`,{
+                order
+            });
+            if(response.status == 200) {
+               return response.data;
+            } else {
+                return null;
+            }
         }
-    } else {
-        const response = await axios.post("/thanh-toan/thanh-toan-tien-loi", {
-            order
-        })
-        console.log(response);
-        if (response.status == 200) {
-            return response.data;
-        } else {
-            return response;
-        }
-    }
+        
+     }  
 
 }
 
@@ -204,10 +209,11 @@ export const deletePromotion = async (id) => {
         return response.data;
     }
 }
-export const updatePromotion = async (data, ids) => {
+export const updatePromotion = async (data, ids, deleteIds) => {
     const response = await axios.put("/khuyen-mai/update-promotion", {
         khuyenMai: data,
-        ids
+        ids,
+        deleteIds
     })
     console.log(response);
     if (response.status === 200) {
@@ -259,7 +265,7 @@ const uploadFiles = async (images) => {
 export const deleteOutfit = async (id) => {
     const response = await axios.delete(`/trang-phuc/xoa-trang-phuc?id=${id}`);
     console.log(response);
-    if (response.status === 200) {
+    if (response.status === 200 && response.data.status === 200) {
         return response.data;
     } else {
         return null;
@@ -267,6 +273,14 @@ export const deleteOutfit = async (id) => {
 }
 export const lockOutfit = async (ids) => {
     const response = await axios.post('/trang-phuc/ngung-cho-thue', { ids });
+    if (response.status === 200) {
+        return response.data;
+    } else {
+        return null;
+    }
+}
+export const unlockOutfit = async (id) => {
+    const response = await axios.get(`/trang-phuc/mo-khoa-trang-phuc?id=${id}`);
     if (response.status === 200) {
         return response.data;
     } else {
@@ -373,6 +387,7 @@ export const addDeposit = async (datCoc) => {
 }
 export const updateStatusOrder = async (id, status) => {
     const response = await axios.get(`/don-thue/change-status?id=${id}&status=${status}`)
+    console.log("updateStatusOrder");
     console.log(response);
     if (response.status === 200) {
         return response.data.data.trangThai;
@@ -383,7 +398,7 @@ export const completedOrder = async (data) => {
     const response = await axios.post(`/don-thue/xuat-phieu-hoan-tra`, data)
     console.log(response);
     if (response.status === 200) {
-        return response.data.data.trangThai;
+        return true;
     }
     return null;
 }
@@ -394,5 +409,74 @@ export const changeRole = async (data) => {
     } else {
         return false;
     }
-
+}
+export const depositOrder = async (order) => {
+    const response = await axios.post("/payment/dat-coc-don-thue", order);
+    if(response.status ==200) {
+        return response.data.data.paymentUrl;
+    } else {
+        return null;
+    }
+}
+export const lockOutfitSize = async (size, id) => {
+    const response = await axios.get(`/trang-phuc/ngung-cho-thue-kich-thuoc?size=${size}&id=${id}`);
+    if(response.status == 200) {
+        return true;
+    } else {
+        return false;
+    }
+}
+export const unlockOutfitSize = async (size, id) => {
+    const response = await axios.get(`/trang-phuc/mo-khoa-kich-thuoc?size=${size}&id=${id}`);
+    if(response.status == 200) {
+        console.log(response);
+        return true;
+    } else {
+        return false;
+    }
+}
+export const insertCategory = async (theLoai) => {
+    const response = await axios.post("/danh-muc/update/insert-category", theLoai);
+    console.log(response);
+    if(response.status == 200 && response.data.status === 200) {
+        return response.data.data.theloai;
+    } else {
+        return null;
+    }
+}
+export const deleteCategory = async (id, deleteAll) => {
+    const response = await axios.get(`/danh-muc/update/delete-category?id=${id}&deleteAll=${deleteAll}`);
+    console.log(response);
+    if(response.status == 200 && response.data.status === 200) {
+        return true;
+    } else {
+        return null;
+    }
+}
+export const updateCategory = async (theLoai) => {
+    const response = await axios.post("/danh-muc/update/update-category", theLoai);
+    console.log(response);
+    if(response.status == 200 && response.data.status === 200) {
+        return response.data.data.theloai;
+    } else {
+        return null;
+    }
+}
+export const updateTheChan = async (id, theChan) =>{
+    const response = await axios.get(`/don-thue/update-the-chan?id=${id}&theChan=${theChan}`);
+    console.log(response);
+    if(response.status == 200) {
+        return true;
+    } else {
+        return false;
+    }
+}
+export const updateNgayNhan = async (id, date) =>{
+    const response = await axios.get(`/don-thue/update-ngay-nhan?id=${id}&date=${date}`);
+    console.log(response);
+    if(response.status == 200) {
+        return true;
+    } else {
+        return false;
+    }
 }

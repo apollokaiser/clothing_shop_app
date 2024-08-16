@@ -60,18 +60,23 @@
                 <span>Địa chỉ:</span>
                 <span>{{props.order.diaChiNguoiNhan}}</span>
             </div>
+            
             <div class="order-phone">
-                <span>Số điện thoại:</span>
-                <span>{{props.order.sdtNguoiNhan}}</span>
+                <span>Ngày thuê:</span>
+                <span>{{new Date(props.order.ngayThue * 1000).toLocaleString()}}</span>
+            </div>
+            <div class="order-phone">
+                <span>Ngày nhận:</span>
+                <span>{{new Date(props.order.ngayNhan * 1000).toLocaleString()}}</span>
             </div>
             <div class="order-items">
                 <div>Sản phẩm thuê</div>
-                <div v-for="item in props.order.chiTiet" :key="item.maTrangPhuc" class="order-product-item">
+                <div v-for="item in props.order.chiTiet" :key="item.trangPhuc.id" class="order-product-item">
         <div class="order-item-description">
-           <Link :to="{name:'outfit', params:{slug:convertToSlug(item.trangPhuc.tenTrangPhuc), id:item.maTrangPhuc}}"><div class="order-item-name">{{ item.trangPhuc.tenTrangPhuc }}</div></Link> 
+           <Link :to="{name:'outfit', params:{slug:convertToSlug(item.trangPhuc.tenTrangPhuc), id:item.trangPhuc.id}}"><div class="order-item-name">{{ item.trangPhuc.tenTrangPhuc }}</div></Link>
             <div class="order-item-detail">
-                <span>Kích thước : <em>{{ item.maKichThuoc || 'Không' }}</em></span>
-                <span>Mã: <em>{{ item.maTrangPhuc }}</em></span>
+                <span>Kích thước : <em>{{ item.outfitSizeId.maKichThuoc || 'Không' }}</em></span>
+                <span>Mã: <em>{{ item.outfitSizeId.maTrangPhuc }}</em></span>
             </div>
         </div>
         <div class="order-item-price">
@@ -87,15 +92,18 @@
 
 <script setup>
 import convertToVND from "@/utils/convertVND";
-import { computed, reactive } from "vue";
+import { computed, reactive, onBeforeMount } from "vue";
 import Link from "@/components/Link.vue";
 import {convertToSlug} from '@/utils/util.function'
 const props = defineProps({
   order: {
     type: Object,
     required: true,
-  },
+  }
 });
+onBeforeMount(() => {
+  console.log(props.order);
+})
 const state = computed(() => {
   switch (props.order.trangThai.maTrangThai) {
     case 1:

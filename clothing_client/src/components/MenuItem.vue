@@ -1,6 +1,10 @@
 <template>
     <li :class="{ 'sub-menu': hasSubMenu, 'font-effect-fire': props.item.khuyenMai }">
-        <Link :to="{name:name,params:{slug: props.item.slug, id:item.maLoai}}" v-bind="$attrs" active-class="active">
+        <Link v-if="name=='category'" :to="{name:name,params:{slug: props.item.slug, id:item.maLoai}}" v-bind="$attrs" active-class="active">
+        {{ props.item.tenLoai }}
+        <i v-if="hasSubMenu" class="fa fa-chevron-down" aria-hidden="true"></i>
+        </Link>
+        <Link v-else :to="{name:name}" v-bind="$attrs" active-class="active">
         {{ props.item.tenLoai }}
         <i v-if="hasSubMenu" class="fa fa-chevron-down" aria-hidden="true"></i>
         </Link>

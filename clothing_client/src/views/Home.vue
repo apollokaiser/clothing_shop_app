@@ -5,11 +5,12 @@
     <!-- Navigation -->
     <NavigationBar :categories="categories"></NavigationBar>
     <!--main-->
-    <RouterView v-slot="{ Component }">
-      <transition :name="route.meta.transition || slide" mode="out-in">
+    <!-- <RouterView v-slot="{ Component }">
+      <transition :name="route.meta.transition || 'slide'" mode="out-in">
         <component :is="Component" :key="$route.path"></component>
       </transition>
-    </RouterView>
+    </RouterView> -->
+    <RouterView/>
     <!--footer-->
     <Footer></Footer>
     <!--login popup-->

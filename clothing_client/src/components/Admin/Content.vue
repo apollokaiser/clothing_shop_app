@@ -2,7 +2,7 @@
   <div class="admin-content">
     <div class="admin-greeting">Xin chào trở lại, <span>{{ user.name || "Admin" }}</span></div>
     <div class="order-unconfirm col-sm-4 mt-3">
-      <div>Chờ xác nhận</div>
+      <div>Chờ nhận hàng</div>
       <div class="order-unconfirm-content">
         <div class="order-unconfirm-count">
           <span>{{ orderCount }}</span>
@@ -12,12 +12,18 @@
     </div>
     <div class="col-12 tm-block-col mt-4">
       <h2 class="tm-block-title">Danh sách đơn thuê ( {{ orders.length || 0 }} )</h2>
-      <div class="order-status">
-        <label for="status">Trạng thái</label>
-        <select v-model="statusCode" @change="loadOrderWithStatus" name="status" id="status">
-          <option v-for="stt in status()" :key="STATUS[stt].code" :value="STATUS[stt].code">{{ STATUS[stt].status }}
-          </option>
-        </select>
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <div class="order-status">
+          <label for="status">Trạng thái</label>
+          <select v-model="statusCode" @change="loadOrderWithStatus" name="status" id="status">
+            <option v-for="stt in status()" :key="STATUS[stt].code" :value="STATUS[stt].code">{{ STATUS[stt].status }}
+            </option>
+          </select>
+        </div>
+        <div class="search-order">
+          <input type="text" placeholder="Tìm kiếm đơn thuê" v-model="search" @keyup.enter="searchOrders" />
+          <button class="btn btn-primary" @click="searchOrders">Tìm kiếm</button>
+        </div>
       </div>
       <div class="tm-bg-primary-dark tm-block tm-block-taller tm-block-scroll">
         <table class="table">
@@ -96,6 +102,19 @@
   top: 50%;
 }
 
+.search-order input {
+  width: 200px;
+  padding: 13px 10px;
+  margin-right: 10px;
+  color: white;
+  outline: none;
+  border-bottom: 1px solid orange;
+}
+
+.search-order input::placeholder {
+  color: #ccc;
+}
+
 .admin-content .admin-greeting {
   margin: 10px 0 20px 0;
   color: white;
@@ -169,10 +188,6 @@
 .order-content {
   cursor: pointer;
 }
-
-/* .order-content th {
-  width: 200px;
-} */
 
 .order-content th b {
   display: block;
@@ -1064,7 +1079,7 @@ input[type="checkbox"]:focus {
 import Swal from "sweetalert2";
 import Link from "../Link.vue";
 import { onBeforeMount, ref } from "vue";
-import { getPromotions, getDonThue, getOrderCount } from "@/data.function/getData";
+import { getPromotions, getDonThue, getOrderCount, getOrdersByKeyword } from "@/data.function/getData";
 import { useResource } from "@/stores/resource.store";
 import { authStore } from "@/stores/user.store";
 import { storeToRefs } from "pinia";
@@ -1079,6 +1094,7 @@ const orders = ref([]);
 const orderCount = ref(0);
 const statusCode = ref(1)
 const page = ref(0);
+const search = ref("");
 onBeforeMount(() => {
   getPromotions().then((res) => {
     promotions.value = res;
@@ -1094,11 +1110,14 @@ onBeforeMount(() => {
 const status = () => {
   return Object.keys(STATUS);
 }
-const getStatusSelect = (statusCode)=>{
+const getStatusSelect = (statusCode, ngayNhan) => {
   let temp = {};
-   status().forEach(stt=>{
-    if(STATUS[stt].code > statusCode)
-    temp[STATUS[stt].code] = STATUS[stt].status;
+  let now = new Date();
+  let date = new Date(ngayNhan * 1000);
+  status().forEach(stt => {
+    if (STATUS[stt].code > statusCode && STATUS[stt].code != 5)
+      if (STATUS[stt].code !=3 ||(STATUS[stt].code == 3 && now > date))
+        temp[STATUS[stt].code] = STATUS[stt].status;
   })
   return temp;
 }
@@ -1122,44 +1141,50 @@ const loadOrderWithStatus = () => {
     orders.value = res;
   });
 }
+const searchOrders = () =>{
+  if(search.value =="") return;
+  getOrdersByKeyword(search.value).then(res=> {
+    orders.value = res;
+  })
+}
 const openChangeStatus = (id) => {
   const index = orders.value.findIndex((order) => order.maDonThue === id);
   let thisStatus = null;
-  if(index !=-1 && orders.value[index].trangThai.maTrangThai == 1) {
-    thisStatus = {4:"Hủy đơn"}
+  if (index != -1 && orders.value[index].trangThai.maTrangThai == 1) {
+    thisStatus = { 4: "Hủy đơn" }
   }
- (async()=>{
-  if(!thisStatus) thisStatus =  getStatusSelect(orders.value[index].trangThai.maTrangThai);
- const {value:submit} = await Swal.fire({
-    title: 'Chuyển trạng thái đơn hàng',
-    input: 'select',
-    inputOptions: thisStatus
-  ,
-    showCancelButton: true,
-    confirmButtonText: 'Chuyển',
-    cancelButtonText: 'Hủy',
-    showLoaderOnConfirm: true,
-  })
-  if(submit){
-   const response = await updateStatusOrder(id, submit);
-   if(!response || response.status !==200) {
-     Swal.fire({
-       title: 'Thông báo',
-       text: 'Cập nhật trạng thái không thành công',
-       icon:'info',
-       confirmButtonText: 'OK'
-     })
-   } else if(response.status == 200) {
-     const index = orders.value.findIndex((order) => order.maDonThue === id);
-     orders.value = orders.value.splice(index, 1);
-     Swal.fire({
-       title: 'Thông báo',
-       text: 'Cập nhật trạng thái thành công',
-       icon:'success',
-       confirmButtonText: 'OK'
-     })
-   }
-  }
- })() 
+  (async () => {
+    if (!thisStatus) thisStatus = getStatusSelect(orders.value[index].trangThai.maTrangThai, orders.value[index].ngayNhan);
+    const { value: submit } = await Swal.fire({
+      title: 'Chuyển trạng thái đơn hàng',
+      input: 'select',
+      inputOptions: thisStatus
+      ,
+      showCancelButton: true,
+      confirmButtonText: 'Chuyển',
+      cancelButtonText: 'Hủy',
+      showLoaderOnConfirm: true,
+    })
+    if (submit) {
+      const response = await updateStatusOrder(id, submit);
+      if (!response ) {
+        Swal.fire({
+          title: 'Thông báo',
+          text: 'Cập nhật trạng thái không thành công',
+          icon: 'info',
+          confirmButtonText: 'OK'
+        })
+      } else if (response.status == 200) {
+        const index = orders.value.findIndex((order) => order.maDonThue === id);
+        orders.value = orders.value.splice(index, 1);
+        Swal.fire({
+          title: 'Thông báo',
+          text: 'Cập nhật trạng thái thành công',
+          icon: 'success',
+          confirmButtonText: 'OK'
+        })
+      }
+    }
+  })()
 }
 </script>

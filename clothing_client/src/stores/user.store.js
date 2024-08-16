@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, watch, computed } from 'vue';
 import { decode } from '@/auth.function/JwtDecoder';
-import { login, refreshAccessToken, getInfo, googleSignIn, updateUser } from '@/auth.function/auth';
+import { login, refreshAccessToken, getInfo, googleSignIn, updateUser, logout as logOut } from '@/auth.function/auth';
 import { addAddress, deleteAddress, setDefault, editAddress } from '@/data.function/postData';
 import { ROLES } from '@/utils/constant';
 import { useRouter } from 'vue-router';
@@ -140,8 +140,8 @@ export const authStore = defineStore("authStore", () => {
         else return response;
     }
     const logout = () => {
-        accessToken.value = null;
-        refreshToken.value = null;
+                accessToken.value = null;
+                refreshToken.value = null;
     }
     const refreshTokenRequest = async () => {
         const currentTimeMillis = Date.now();
@@ -185,14 +185,14 @@ export const authStore = defineStore("authStore", () => {
         }
         const response = await editAddress(info);
         if (response && response.status == 200) {
-            let index = user.value.address.findIndex(item=> item.id ===info.id);
-            if(index !=-1) {
+            let index = user.value.address.findIndex(item => item.id === info.id);
+            if (index != -1) {
                 user.value.address[index] = address;
             }
-            if (address.isDefault){
+            if (address.isDefault) {
                 user.value.address.forEach(item => {
-                    if(item.id != info.id)
-                    item.isDefault = false
+                    if (item.id != info.id)
+                        item.isDefault = false
                 });
             }
             user.value.address.forEach(item => {

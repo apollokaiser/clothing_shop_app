@@ -7,15 +7,11 @@
             stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M19 12H6M12 5l-7 7 7 7" />
           </svg>
-          <span class="d-flex align-items-center"><span>Thông tin sản phẩm</span>
-            <v-btn class="ma-2" color="indigo" size="x-small" icon="mdi-wrench">
-              <v-icon aria-hidden="false">mdi-wrench</v-icon>
-              <v-tooltip activator="parent" location="bottom">Chỉnh thông tin sản phẩm</v-tooltip>
-            </v-btn>
+          <span class="d-flex align-items-center"><span>Cập nhật trang phục</span>
           </span>
         </div>
         <div class="add-action">
-          <button class="add-submit" @click.prevent="addOufitHandle">Cập nhật</button>
+          <button v-if="updateOutfit" class="add-submit" @click.prevent="addOufitHandle">Cập nhật</button>
         </div>
       </div>
       <div class="add-outfit-form mt-3">
@@ -225,6 +221,7 @@
 <script setup>
 import { Swiper, SwiperSlide } from 'swiper/vue';
 import 'swiper/swiper-bundle.css';
+import { ROLES } from "@/utils/constant";
 import { useRouter } from "vue-router";
 import ListCategory from "@/components/Admin/ListCategory.vue";
 import { useResource } from "@/stores/resource.store";
@@ -292,6 +289,25 @@ const outfitPiece = reactive({
   kichThuocs: [],
   deleteKichThuoc: []
 })
+const updateOutfit = computed(() => {
+  if (user.value.scope.includes(ROLES.ADMIN)) {
+    let accept_role = [
+      ROLES.SUPER_ACCOUNT,
+      ROLES.FULL_CONTROL,
+      ROLES.OUTFIT_UPDATE,
+    ];
+    if (
+      user.value.scope.some((role) => {
+        return accept_role.includes(role);
+      })
+    ) {
+      return true;
+    } else {
+      return false;
+    }
+  }
+  return false;
+});
 const outfitStatic = ref({});
 //UPDATED: đã fix lỗi lấy outfit sau khgi get category dẫn đến lỗi không tìm thấy được category
 onBeforeMount(async () => {

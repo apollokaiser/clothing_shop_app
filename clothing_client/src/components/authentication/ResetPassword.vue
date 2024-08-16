@@ -1,23 +1,40 @@
 <script setup>
-import { ref, reactive } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import Link from '../Link.vue';
 import { sendEmailResetPass, resetPassword } from '@/data.function/postData'
+import { validateEmail, validatePassword } from '@/utils/validate.funtion';
 const reset = reactive({
     email: '',
     newPassword: '',
-    showResetForm: false,
+    rePasswword: '',
     resetCode: '',
     error: '',
-    success: false,
+
 })
 const requestPending = ref({
     sendCode: false,
     sendEmail: false,
 })
 let showPassword = ref(false);
-const showPasswordCommand = () => {
-    showPassword.value = !showPassword.value;
+const validate = {
+    email: value => !!validateEmail(value) || "Email không hợp lệ",
+    password: value => !!validatePassword(value) || "Password không hợp lệ",
+    re_password: value => value == reset.newPassword || "Mật khẩu không khớp"
 }
+const checkValidEmail = computed(() => {
+    return validateEmail(reset.email);
+})
+const checkValidPassword = computed(() => {
+    return validatePassword(reset.newPassword);
+})
+const step = ref(1);
+const currentTitle = computed(() => {
+    switch (step.value) {
+        case 1: return 'Nhập email tài khoản'
+        case 2: return 'Nhập mã xác thực'
+        default: return 'Thông báo'
+    }
+})
 const sendEmail = () => {
     if (!reset.email && reset.email.trim() == "")
         reset.error = 'Vui lòng nhập email'
@@ -25,9 +42,9 @@ const sendEmail = () => {
         requestPending.value.sendEmail = true;
         sendEmailResetPass(reset.email).then(result => {
             requestPending.value.sendEmail = false;
-            if (result.status ==200){
-                reset.showResetForm = true
-            reset.error = '';
+            if (result.status == 200) {
+                step.value = 2;
+                reset.error = '';
             }
             else if (result.status == 1001) {
                 reset.error = 'Email không tồn tại'
@@ -41,11 +58,15 @@ const sendCode = () => {
         reset.error = 'Mật khẩu không được chứa khoảng trắng hoặc bỏ trống !';
         return;
     }
+    if(reset.newPassword != reset.rePasswword) {
+        return;
+    }
     requestPending.value.sendCode = true;
     resetPassword(reset.email, reset.newPassword, reset.resetCode).then(response => {
+        requestPending.value.sendCode = false;
         if (response.status == 200) {
             reset.error = ''
-            reset.success = true;
+            step.value = 3;
         } else if (response.status == 3001) {
             reset.error = 'Mã xác nhận không đúng ! Thử lại'
         } else if (response.status == 3002) {
@@ -53,7 +74,6 @@ const sendCode = () => {
         } else {
             reset.error = 'Đã xảy ra lỗi, vui lòng thử lại sau !'
         }
-        requestPending.value.sendCode = false;
     })
 }
 
@@ -61,67 +81,101 @@ const sendCode = () => {
 
 <template>
     <div class="reset-pass-main">
-    <div class="brand-header d-flex flex-column justify-content-center align-items-center">
-        <img src="/images/logo-anh-duong.png" alt="">
-        <div class="brand-name font-effect-fire">Anh Duong Store</div>
-    </div>
-        <div v-if="!reset.success" class="form-container">
-            <div v-if="!reset.showResetForm" class="logo-container">
-                Quên mật khẩu ?
-            </div>
-            <div v-else class="logo-container">
-                Nhập reset code
-            </div>
-            <form class="form">
-                <div v-if="reset.error != ''" class="error-code">{{ reset.error }}</div>
-                <div v-if="!reset.showResetForm" class="form-group">
-                    <label for="email">Email</label>
-                    <input v-model="reset.email" type="text" id="email" name="email" placeholder="Enter your email"
-                        required="">
-                </div>
-                <div v-if="reset.showResetForm" class="form-group">
-                    <label for="reset-code">Reset code</label>
-                    <input v-model="reset.resetCode" type="text" id="reset-code" name="reset-code"
-                        placeholder="Enter your reset code" required="">
-                </div>
-                <div v-if="reset.showResetForm" class="form-group">
-                    <label for="reset-code">Mật khẩu mới</label>
-                    <div class="input-pass">
-                        <input v-model="reset.newPassword" :type="showPassword ? 'text' : 'password'" id="reset-code"
-                            name="reset-code" placeholder="Enter your reset code" required="">
-                        <i v-if="showPassword" @click="showPasswordCommand" class="fa fa-eye" aria-hidden="true"></i>
-                        <i v-else @click="showPasswordCommand" class="fa fa-eye-slash" aria-hidden="true"></i>
+        <div class="brand-header d-flex flex-column justify-content-center align-items-center">
+            <!--  <img src="/images/logo-anh-duong.png" alt=""> -->
+            <div class="brand-name font-effect-fire">Anh Duong Store</div>
+        </div>
+        <v-card class="mx-auto w-100" max-width="700">
+            <v-card-title class="text-h6 font-weight-regular justify-space-between">
+                <span>{{ currentTitle }}</span>
+                <v-avatar class="ms-2" color="primary" size="24" v-text="step"></v-avatar>
+            </v-card-title>
+            <v-window v-model="step">
+                <v-window-item :value="1">
+                    <v-card-text>
+                        <v-text-field v-model="reset.email" :rules="[validate.email]" :error-messages="reset.error"
+                            label="Email" placeholder="nguyenvana@gmail.com">
+                        </v-text-field>
+                        <span class="text-caption text-grey-darken-1">
+                            Email dùng cho quá trình gửi mã xác thực
+                        </span>
+                    </v-card-text>
+                </v-window-item>
+
+                <v-window-item :value="2">
+                    <v-card-text>
+                        <div class="text-body-2">
+                            Chúng tôi đã gửi mã xác thực đến <br> Vui lòng kiểm tra hộp thư của bạn
+                        </div>
+                        <v-otp-input v-model="reset.resetCode" type="password" variant="solo" :length="7"></v-otp-input>
+                        <v-text-field v-model="reset.newPassword" label="Mật khẩu mới"
+                            :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'" :rules="[validate.password]"
+                            :type="showPassword ? 'text' : 'password'" counter
+                            @click:append="showPassword = !showPassword" :error-messages="reset.error"></v-text-field>
+                        <v-text-field v-model="reset.rePasswword" label="Xác nhận mật khẩu"
+                            :append-icon="showPassword ? 'mdi-eye' : 'mdi-eye-off'" :rules="[validate.password, validate.re_password]"
+                            :type="showPassword ? 'text' : 'password'" counter
+                            @click:append="showPassword = !showPassword"></v-text-field>
+                    </v-card-text>
+                </v-window-item>
+                <v-window-item :value="3">
+                    <div class="card d-flex justify-content-center align-items-center">
+                        <div
+                            style="border-radius:130px; height:130px; width:130px; background: #F8FAF5; margin:0 auto;">
+                            <i class="checkmark">✓</i>
+                        </div>
+                        <h1>Thay đổi thành công</h1>
+                        <p class="text-center">Mật khẩu đã được đặt lại<br />
+                            <Link to="/">Trở lại</Link>
+                        </p>
                     </div>
-                </div>
-                <button v-if="!reset.showResetForm" @click.prevent="sendEmail" class="form-submit-btn"
-                    type="submit">Send Email</button>
-                <button v-else @click.prevent="sendCode" class="form-submit-btn" type="submit">Xác nhận</button>
-            </form>
-            <p v-if="!reset.showResetForm" class="signup-link">
-                Đã là thành viên ?
-                <a href="#" class="signup-link link">Login now</a>
-            </p>
-        </div>
-        <div v-if="reset.success" class="card">
-            <div style="border-radius:130px; height:130px; width:130px; background: #F8FAF5; margin:0 auto;">
-                <i class="checkmark">✓</i>
-            </div>
-            <h1>Thay đổi thành công</h1>
-            <p>Mật khẩu đã được đặt lại<br />
-                <Link to="/">Trở lại</Link>
-            </p>
-        </div>
+                </v-window-item>
+            </v-window>
+
+            <v-divider></v-divider>
+
+            <v-card-actions>
+            <v-btn v-if="step ==1 " color="primary" variant="flat" @click="$router.back()">
+                Trở lại
+            </v-btn>
+                <v-btn v-if="step > 1 && step != 3" variant="text" @click="step--">
+                    Back
+                </v-btn>
+                <v-spacer></v-spacer>
+                <v-btn v-if="step == 1" :disabled="!checkValidEmail" color="primary" variant="flat" @click="sendEmail">
+                    Gửi mã xác nhận
+                </v-btn>
+                <v-btn v-if="step == 2" :disabled="!checkValidPassword || !reset.resetCode" color="primary"
+                    variant="flat" @click.prevent="sendCode">
+                    Thay đổi mật khẩu
+                </v-btn>
+            </v-card-actions>
+            <v-progress-linear :active="requestPending.sendEmail || requestPending.sendCode" :indeterminate="requestPending.sendEmail || requestPending.sendCode"
+                color="deep-purple-accent-4" absolute bottom>
+            </v-progress-linear>
+        </v-card>
     </div>
 </template>
 <style scoped>
-.brand-header {
-    width: 300px;
-    height: 300px;
+.reset-pass-main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    height: 100vh;
+    width: 500px;
 }
-.brand-header img{
-    width:200px;
+
+.brand-header {
+    width: 500px;
+    /* height: 200px; */
+}
+
+.brand-header img {
+    width: 200px;
     height: 200px;
 }
+
 .brand-name {
     font-size: 24px;
     font-weight: 600;
@@ -129,9 +183,11 @@ const sendCode = () => {
     color: #ff6d6d;
     margin-bottom: 20px;
 }
+
 .font-effect-fire {
     text-shadow: 0 -0.05em 0.2em #FFF, 0.01em -0.02em 0.15em #FE0, 0.01em -0.05em 0.15em #FC0, 0.02em -0.15em 0.2em #F90, 0.04em -0.20em 0.3em #F70, 0.05em -0.25em 0.4em #F70, 0.06em -0.2em 0.9em #F50, 0.1em -0.1em 1.0em #F40;
-} 
+}
+
 .form-container {
     max-width: 500px;
     background-color: #fff;
@@ -271,6 +327,7 @@ const sendCode = () => {
     line-height: 200px;
     /* margin-left: -15px; */
 }
+
 .card>div:first-child {
     position: relative;
 }
@@ -286,7 +343,8 @@ const sendCode = () => {
     align-items: center;
     margin: 0 auto;
 }
-.card a{
+
+.card a {
     color: #1778f2;
     width: 100%;
     text-align: center;

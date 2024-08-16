@@ -18,7 +18,7 @@
     </div>
     <div class="outfit-news-description d-flex flex-column">
       <div class="outfit-id">Mã: <span>{{props.outfit.id }}</span></div>
-      <Link  :to="{name:'update-outfit', params:{id:props.outfit.id}}" v-bind="$attrs">
+      <Link  :to="{name:'outfit-info', params:{id:props.outfit.id}}" v-bind="$attrs">
      <span>{{ props.outfit.tenTrangPhuc }}</span>
   </Link>
     </div>
@@ -101,8 +101,7 @@ const updateOutfit = computed(() => {
   if (user.value.scope.includes(ROLES.ADMIN)) {
     let accept_role = [
       ROLES.SUPER_ACCOUNT,
-      ROLES.FULL_CONTROL,
-      ROLES.OUTFIT_UPDATE,
+      ROLES.FULL_CONTROL
     ];
     if (
       user.value.scope.some((role) => {

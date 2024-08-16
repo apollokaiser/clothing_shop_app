@@ -2,16 +2,28 @@
 import { storeToRefs } from 'pinia';
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue'
 import Link from './Link.vue';
+import OrderOutfitItem from './OrderOutfitItem.vue';
 import { useOrderStore } from '@/stores/order.store';
+import { useCartStore } from '@/stores/cart.store';
 import { authStore } from '@/stores/user.store';
 import convertToVND from '@/utils/convertVND';
 import { isValidDate } from '@/utils/util.function';
 import { ACCEPT_PROVINCES } from '@/utils/constant';
 import { getProvinces, getDistricts, getWards } from '@/data.function/vnapis.get';
+import { canceledOrder } from '@/data.function/getData';
+import { useRouter } from 'vue-router';
+import { usePromotionStore } from '@/stores/promotion.store';
+import { Toast } from '@/utils/notification';
+import { validatePhoneNumber } from '@/utils/validate.funtion';
+const router = useRouter();
 const donThue = useOrderStore()
+const cart = useCartStore()
 const auth = authStore()
+const khuyenMai = usePromotionStore()
+const {totalDiscount} = storeToRefs(khuyenMai);
 const { order, address } = storeToRefs(donThue);
 const { user, isLoggedIn } = storeToRefs(auth);
+const {cartItems} = storeToRefs(cart)
 const city = reactive({
   province:[],
   district:[],
@@ -23,17 +35,20 @@ const orderAddress = reactive({
   district: "",
   ward: "",
 })
-const step = ref(1);
-const currentTitle = computed(()=> {
-        switch (step.value) {
-          case 1:
-            return 'Sign-up'
-          case 2:
-            return 'Create a password'
-          default:
-            return 'Account created'
-        }
+const props = defineProps({
+  uid:{
+    type: String,
+    required: true,
+  },
+  slug:{
+    type: String,
+    required: true,
+  }
 })
+const returnCart = () =>{
+  router.push({name:"cart", params:{uid:props.uid, slug:props.slug}})
+}
+const step = ref(1);
 const chooseAddress = ref("");
 const validAddress = computed(()=>{
   if(user.value.address.length > 0 && isLoggedIn.value) {
@@ -70,6 +85,7 @@ const price = computed(()=>{
   return convertToVND(order.value.tamTinh || 0);
 })
 const discount = computed(()=>{
+  order.value.tongUuDai = totalDiscount.value;
   return convertToVND(order.value.tongUuDai || 0);
 }) 
 const total = computed(()=>{
@@ -86,11 +102,13 @@ watch(() => order.value.diaChiNguoiNhan, value => {
 
   }
 })
-watch(order.value.ngayNhan, value => {
+watch(()=>order.value.ngayNhan, value => {
   if (isValidDate(value)) {
     alert("Ngày thuê phải dự kiến ít nhất 2 ngày và không quá 1 tuần !");
     order.value.ngayNhan = new Date();
   }
+},{
+  deep: true,
 })
 watch(()=> orderAddress.province, value =>{
   getDistricts(value).then(res => {
@@ -113,32 +131,58 @@ watch(()=> orderAddress.address, value =>{
     order.value.diaChiNguoiNhan = value + ", " + ward + ", " + district + ", " + province
   }
 })
+const cancelOrder = () =>{
+  canceledOrder().then(res => res);
+}
+const openConfirmOrder = () =>{
+  if(order.value.tenNguoiNhan=="") {
+    Toast.fire({
+      title: 'Thông báo',
+      text: 'Bạn chưa điền tên người nhận',
+      icon: 'error',
+    })
+    return;
+  }
+  if(!order.value.diaChiNguoiNhan || order.value.diaChiNguoiNhan ==""){
+    Toast.fire({
+      title: 'Thông báo',
+      text: 'Bạn chưa điền địa chỉ người nhận',
+      icon: 'error',
+    })
+    
+    return;
+  }
+  if(!order.value.sdtNguoiNhan || !validatePhoneNumber(order.value.sdtNguoiNhan) ||order.value.sdtNguoiNhan =="") {
+    Toast.fire({
+      title: 'Thông báo',
+      text: 'Bạn chưa điền số điện thoại người nhận',
+      icon: 'error',
+    })
+    return;
+  }
+
+  router.push({name:'payment-info', params:{uid:user.value.uid, slug:props.slug}});
+}
+const orderItem = computed(()=>{
+  return cartItems.value.filter(item=>item.check)
+})
 </script>
 <template>
-  <!--order-->
-  <div class="modal fade" id="order" tabindex="-1" aria-labelledby="orderLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-body">
-        <v-window v-model="step">
-          <v-window-item :value="1">
-            <div class="order-legacy">
-              <div class="order-legacy-title">Quy định thuê trang phục</div>
-              <div class="legacy-content">
-              <p></p>
-                <ul>
-                  <li>Về nơi nhận, chúng tôi chỉ cung cấp dịch vụ giới hạn trong nội/ ngoại thành Hồ Chí Minh cùng các tỉnh lân cận như Long An, Bình Phước, Bình Dương ...</li>
-                  <li>Khách hàng có thể chọn 2 phương thức đặt cọc là đặt khi nhận hàng hoặc nhận đặt cọc online</li>
-                  <li><b>Lưu ý: </b>Khi hủy đơn thuê sẽ không nhận lại số tiền cọc ! Trân trọng !</li>
-                  
-                </ul>
-              </div>
+  <div class="mt-5 d-flex container flex-column">
+    <div class="outfit-link mb-5">
+            <div class="container breadcumb">
+                <Link to="/"><span>Trang chủ</span></Link>
+                <span class="mx-1">/</span>
+               <span @click="returnCart">Giỏ hàng</span>
+                <span class="mx-1">/</span>
+                <span>Thông tin thanh toán</span>
             </div>
-          </v-window-item>
-          <v-window-item :value="2">
-            <section class="order-container">
+        </div>
+        <div class="container d-flex">
+          <div class="col-sm-6 me-3">
+          <section class="order-container">
             <header>Thuê trang phục</header>
-            <form class="form">
+            <div class="form">
               <div class="input-box">
                 <label>Tên người nhận</label>
                 <input v-model="order.tenNguoiNhan" placeholder="Người nhận ..." type="text">
@@ -163,7 +207,7 @@ watch(()=> orderAddress.address, value =>{
                   </select>
                   <!--TODO: làm thêm trang để biết các tỉnh nào hợp lệ-->
                 </div>
-                  <div><em v-if="!validAddress" style="color:red">Địa chỉ của bạn không thuộc giới hạn chúng tôi Vui lòng chọn lại ! Tìm hiểu</em></div>
+                <!--  <div><em v-if="!validAddress" style="color:red">Địa chỉ của bạn không thuộc giới hạn chúng tôi Vui lòng chọn lại ! Tìm hiểu</em></div>-->
                 <label>Địa chỉ người nhận</label>
                 <div v-if="chooseAddress != 0" class="my-address">{{ order.diaChiNguoiNhan }}</div>
                 <div v-if="chooseAddress == 0">
@@ -205,25 +249,73 @@ watch(()=> orderAddress.address, value =>{
                   <span>{{total}}</span>
                 </div>
               </div>
-              <Link :to="{name:'payment', params:{uid:'1', slug:'thanh-toan-thue-trang-phuc'} }">
-              <button data-bs-dismiss="modal">Thuê ngay</button>
-              </Link>
-              <button class="close" data-bs-dismiss="modal">Xem lại đã !</button>
-            </form>
+              <button @click.prevent="openConfirmOrder()">Thuê ngay</button>
+            </div>
           </section>
-          </v-window-item>
-        </v-window>
-        <div v-if="step==1" @click="step++" class="next-to-order">
-          <button>Tôi đã hiểu</button>
         </div>
+        <div class="col-sm-5">
+          <div class="order-item">
+                    <div>Danh sách sản phẩm đã đặt hàng</div>
+                    <div class="order-product">
+                        <OrderOutfitItem v-for="item in orderItem" :key="item.id" :product="item" />
+                    </div>
+                </div>
+        </div>
+        
+        </div>
+        
+  </div>
+  <!--order-->
+  <!-- <div class="modal fade" id="order" tabindex="-1" aria-labelledby="orderLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-body"> -->
+        <!-- <v-window v-model="step"> -->
+          <!-- <v-window-item :value="1">
+            <div class="order-legacy">
+              <div class="order-legacy-title">Quy định thuê trang phục</div>
+              <div class="legacy-content">
+              <p></p>
+                <ul>
+                  <li>Về nơi nhận, chúng tôi chỉ cung cấp dịch vụ giới hạn trong nội/ ngoại thành Hồ Chí Minh cùng các tỉnh lân cận như Long An, Bình Phước, Bình Dương ...</li>
+                  <li>Khách hàng có thể chọn 2 phương thức đặt cọc là đặt khi nhận hàng hoặc nhận đặt cọc online</li>
+                  <li><b>Lưu ý: </b>Khi hủy đơn thuê sẽ không nhận lại số tiền cọc ! Trân trọng !</li>
+                  
+                </ul>
+              </div>
+            </div>
+          </v-window-item> -->
+          <!-- <v-window-item :value="2"> -->
+           
+          <!-- </v-window-item>
+        </v-window> -->
+        <!-- <div v-if="step==1" @click="step=2" class="next-to-order">
+          <button >Tôi đã hiểu</button>
+        </div>
+        <div v-if="step==1" @click="cancelOrder" class="next-to-order">
+          <button class="close" data-bs-dismiss="modal">Quay lại</button>
+        </div>
+        <div ></div>
         </div>
       </div>
-    </div>
-  </div>
+    </div> -->
+  <!-- </div> -->
   <!--end order-->
 </template>
 
 <style scoped>
+.outfit-link {
+    border-top: 1px solid #ccc;
+    border-bottom: 1px solid #ccc;
+    padding: 10px;
+    align-items: center;
+}
+
+.outfit-link .breadcumb {
+    font-size: 15px;
+    font-style: italic;
+    font-family: Cambria, Cochin, Georgia, Times, "Times New Roman", serif, sans-serif;
+}
 .order-container {
   position: relative;
   max-width: 500px;
@@ -383,5 +475,17 @@ button.close:hover {
   color: #000;
   font-weight: 600;
   text-align: center;
+}
+.order-item
+{
+  font-size: 1.2rem;
+    margin: 5px 0;
+    padding: 5px;
+}
+ .order-item>div:first-child {
+    font-weight: bold;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ccc;
+    margin-bottom: 5px;
 }
 </style>

@@ -125,3 +125,17 @@ export function getRole(role) {
             return "Không xác định";
     }
 }
+export function findCategoryById(root, maLoai) {
+    if (root.maLoai == maLoai) {
+      return root;
+    }
+    if (root.children) {
+      for (const child of root.children) {
+        const result = findCategoryById(child, maLoai);
+        if (result) {
+          return result;
+        }
+      }
+    }
+    return null;
+  }

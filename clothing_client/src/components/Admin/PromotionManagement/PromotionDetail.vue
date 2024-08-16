@@ -127,7 +127,7 @@
                   </div>
                 </div>
               </form>
-              <div class="mb-3 col-sm-5 d-flex flex-column">
+              <!-- <div class="mb-3 col-sm-5 d-flex flex-column">
                 <label for="" class="form-label">Chọn danh mục</label>
                 <button
                   type="submit"
@@ -137,6 +137,20 @@
                 >
                   Thêm ngay
                 </button>
+              </div> -->
+              <div class="mb-3 col-sm-12 d-flex justify-content-between align-items-center">
+                <div class="col-sm-5 d-flex flex-column">
+                  <label for="" class="form-label">Chọn danh mục</label>
+                  <button type="submit" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#chooseCategory">
+                    Thêm ngay
+                  </button>
+                </div>
+                <div class="selected-category col-sm-5 d-flex flex-column">
+                  <div>Danh mục được chọn:</div>
+                  <v-chip-group selected-class="text-primary" column>
+                    <v-chip v-for="category in promotionCategory" :key="category" @click:close="removeCategory(category.maLoai)" closable class="ma-2" color="teal"> {{ category.tenLoai }} </v-chip>
+                  </v-chip-group>
+                </div>
               </div>
             </div>
             <div
@@ -193,7 +207,6 @@
             <button
               type="button"
               class="btn btn-secondary"
-              @click="removeAllCategory"
               data-bs-dismiss="modal"
             >
               Thoát
@@ -202,6 +215,7 @@
               type="button"
               class="btn btn-primary"
               data-bs-dismiss="modal"
+              @click.prevent="addPromotionCategory"
             >
               Chọn
             </button>
@@ -263,7 +277,7 @@ ul.menu > li > {
 }
 </style>
 <script setup>
-import { onBeforeMount, reactive, ref, toRaw, watch } from "vue";
+import { computed, onBeforeMount, reactive, ref, toRaw, watch } from "vue";
 import docx2html from "docx2html";
 import { parse } from "node-html-parser";
 import { useResource } from "@/stores/resource.store";
@@ -272,13 +286,16 @@ import ListCategory from "@/components/Admin/ListCategory.vue";
 import Notification from "@/components/Notification.vue";
 import { storeToRefs } from "pinia";
 import { getCategory,getCategoryInPromotion } from "@/data.function/getData";
-import { addPromotion, updatePromotion } from "@/data.function/postData";
+import { updatePromotion } from "@/data.function/postData";
 import Swal from "sweetalert2";
+import { Toast } from "@/utils/notification";
+import { findCategoryById } from "@/utils/util.function";
 const resource = useResource();
 const admin = useAdminStore();
 const { choosedCategory } = storeToRefs(admin);
 const { category, promotions } = storeToRefs(resource);
 const htmlContent = ref(null);
+let checkBlank = ['tenKhuyenMai', 'moTa', 'noidungChinh'];
 const props = defineProps({
   id: {
     type: Number,
@@ -288,18 +305,29 @@ const props = defineProps({
 const promotion = reactive({
   item: {},
 });
-const categoryInPromotion = ref(null);
-onBeforeMount(() => {
-  getCategory().then((cat) => {
-    category.value = cat;
+const promotionCategory = ref([]);
+const categoryInPromotion = ref([]);
+onBeforeMount(async() => {
+ const response = await getCategory()
+    category.value = response;
     promotion.item = resource.getPromotion(props.id);
     promotion.item.ngayBatDau = getDateInit(promotion.item.ngayBatDau);
     promotion.item.ngayKetThuc = getDateInit(promotion.item.ngayKetThuc);
-  });
+ const result = await  getCategoryInPromotion(props.id)
+    categoryInPromotion.value = result;
+    if(categoryInPromotion.value.length){
+    promotionCategory.value = categoryInPromotion.value.map(item => {
+      let temp = null;
+      category.value.forEach(value =>{
+        if(!temp) temp = findCategoryById(value, item);
+      })
+      if(temp) return temp;
+    });
+    choosedCategory.value = JSON.parse(JSON.stringify(promotionCategory.value));
+  }
 });
-watch(
-  promotions,
-  (value) => {
+watch(()=>promotions.value,
+  () => {
     if(!promotion.item.maKhuyenMai){
       promotion.item = resource.getPromotion(props.id);
       promotion.item.ngayBatDau = getDateInit(promotion.item.ngayBatDau);
@@ -310,14 +338,27 @@ watch(
     deep: true,
   }
 );
-
-watch(()=> promotion, value=>{
-  if(value.item.maKhuyenMai){
-   getCategoryInPromotion(props.id).then(result=>{
-    categoryInPromotion.value = result;
-   })
-  }
-})
+// watch(() => categoryInPromotion.value, () =>{
+//   if(categoryInPromotion.value.length){
+//     promotionCategory.value = categoryInPromotion.value.map(item => {
+//       category.value.forEach(value =>{
+//         let temp = findCategoryById(value, item);
+//         if(temp)
+//         return temp;
+//       })
+//     });
+//     choosedCategory.value = JSON.parse(JSON.stringify(promotionCategory.value));
+//   }
+// }, {
+//   deep: true,
+// })
+const removeCategory = (id) =>{
+  promotionCategory.value = promotionCategory.value.filter(p=> p.maLoai !=id);
+  choosedCategory.value = JSON.parse(JSON.stringify(promotionCategory.value));
+}
+const addPromotionCategory = () =>{
+  promotionCategory.value  =  JSON.parse(JSON.stringify(choosedCategory.value))
+}
 const getPromotion = (data) => {
   promotion.item.ngayBatDau = getDate(data[0]);
   promotion.item.ngayKetThuc = getDate(data[1]);
@@ -374,16 +415,62 @@ const convertToHTML = (event) => {
     });
   }
 };
-const removeAllCategory = () => {
-  admin.resetCategory();
-};
+const isValidData = computed(()=>{
+  let isValid = Object.keys(promotion.item).some(key =>{
+    if(checkBlank.includes(key) && promotion.item[key] == "") return false;
+    return true;
+  })
+  if((promotion.item.soLuongToiThieu >0 && promotion.item.giaTriToiThieu >0) || (promotion.item.giamTien >0 && promotion.item.phanTramGiam >0)) {
+   isValid = false;
+  }
+  // trường hợp nãy sẽ catch nếu cả 2 bằng 0
+  if(promotion.item.giamTien == promotion.item.phanTramGiam) isValid = false;
+  return isValid;
+})
+const checkPromotionDate = computed(()=>{
+  const now = new Date();
+  console.log(new Date(promotion.item.ngayBatDau));
+  const startDate = new Date(promotion.item.ngayBatDau);
+  const endDate = new Date(promotion.item.ngayKetThuc);
+  return (now >= startDate || startDate > now) && now <= endDate;
+})
+const deleteCategories = computed(()=>{
+  if(categoryInPromotion.value.length){
+   return categoryInPromotion.value.filter(item=> !promotionCategory.value.some(p=> p.maLoai == item)).map(item=> item.maLoai);
+  } 
+  return [];
+})
 const savePromotion = () => {
+  if(!checkPromotionDate.value) {
+    Toast.fire({
+                icon: 'error',
+                title: 'Thời gian diễn ra khuyến mãi không hợp lệ !'
+            })
+            return;
+  }
+  if(!isValidData.value) {
+    Toast.fire({
+                icon: 'error',
+                title: 'Dữ liệu nhập không hợp lệ !'
+            })
+            return;
+  }
+  let pCategory = promotionCategory.value.map(item=> item.maLoai);
+  //Lấy danh sách categories id mà lúc đầu không có
+  let insertCategory = []
+  if(categoryInPromotion.value){
+    if(JSON.stringify(pCategory) == JSON.stringify(categoryInPromotion.value)) {
+      insertCategory = []
+  } else 
+    insertCategory = categoryInPromotion.value.length ?  pCategory.filter(item=> !categoryInPromotion.value.includes(item)) : pCategory
+  }
+  //lấy danh sách categories id mà lúc đầu có mà lúc sau không có (tức là bị xóa mất)
   let savePromotion = toRaw(promotion.item);
   savePromotion.ngayBatDau =
     new Date(savePromotion.ngayBatDau).getTime() / 1000;
   savePromotion.ngayKetThuc =
     new Date(savePromotion.ngayKetThuc).getTime() / 1000;
-    updatePromotion(savePromotion, choosedCategory.value).then((result) => {
+    updatePromotion(savePromotion, insertCategory, deleteCategories.value).then((result) => {
     if (result != false) {
       htmlContent.value = "";
       status.addPromotionSuccess = true;

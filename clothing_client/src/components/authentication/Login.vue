@@ -12,8 +12,9 @@
         <label>Password </label>
       </div>
       <div class="inputForm">
-        <input @blur="checkPassword" v-model="user.password" type="password" class="input" placeholder="Enter your Password" />
-        <i class="fa-regular fa-eye"></i>
+        <input @blur="checkPassword" v-model="user.password" :type="!showPassword ? 'password' : 'text'" class="input" placeholder="Enter your Password" />
+        <i v-if="showPassword" @click="showPassword = !showPassword" class="fa-regular fa-eye"></i>
+        <i v-else @click="showPassword = !showPassword" class="fa-regular fa-eye-slash"></i>
       </div>
       <em v-if="errorMessage.password" class="text-danger error-message">Mật khẩu không hợp lệ</em>
       <div class="flex-row">
@@ -65,13 +66,13 @@
 </template>
 
 <script setup>
-import { computed, reactive, watch } from "vue";
+import { computed, reactive, watch, ref } from "vue";
 import Link from "../Link.vue";
 import { authStore } from "@/stores/user.store";
 import { storeToRefs } from "pinia";
 import { validateEmail, validatePassword } from "@/utils/validate.funtion";
 import { googleSdkLoaded } from "vue3-google-login";
-import Swal from "sweetalert2";
+import { Toast } from "@/utils/notification";
 const auth = authStore();
 const { loginRequest } = storeToRefs(auth);
 const loginFailed = reactive({
@@ -86,6 +87,7 @@ const errorMessage = reactive({
   email: false,
   password: false,
 });
+const showPassword = ref(false);
 const checkEmail = ()=>{
   if(user.email == "") errorMessage.email = true;
   else if(!validateEmail(user.email)) errorMessage.email = true;
@@ -93,6 +95,7 @@ const checkEmail = ()=>{
 }
 
 const checkPassword = ()=>{
+  console.log(validatePassword(user.password));
   if(user.password == "") errorMessage.password = true;
   else if(validatePassword(user.password) !=true) errorMessage.password = true;
   else errorMessage.password = false;
@@ -178,8 +181,16 @@ const loginWithGoogle = () => {
         scope: "email profile openid",
         callback: (response) => {
           auth.signInGoogle(response.code).then((res) => {
-            requestPending.pending = false;
-            requestPending.googleLogin = false;
+            if(res==true) {
+              requestPending.pending = false;
+              requestPending.googleLogin = false;
+            } else {
+              Toast.fire({
+                icon: "error",
+                title: "Tài khoản đã được đăng nhập trước đó",
+                text: "Vui lòng thử lại sau",
+              })
+            }
           });
         },
         error_callback: () => {

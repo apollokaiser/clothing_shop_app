@@ -17,40 +17,12 @@ instance.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${accessToken.value}`;
   return config;
 });
-
-// instance.interceptors.response.use((response) =>{
-//     const data = response.data;
-//     if(data.status === 200) return response;
-//     if(data.status == 401){
-//       console.log("log to 401");
-//       const auth = authStore();
-//       const {accessToken} = storeToRefs(auth);
-//       auth.refreshTokenRequest().then(result =>{
-//         if(result) {
-//           //lấy được --> thực hiện lại request
-//           const config  = response.config;
-//           config.headers.Authorization = 'Bearer '+ accessToken.value;
-//           config.baseURL = "http://localhost:8080/api";
-//           return instance(config);
-//         } else {
-//           console.log("expired refresh token....");
-//           //không thể lấy lại access token ==> login lại
-//           auth.logout();
-//           return {status: 401, message: "acess token cannot refresh anymore! Plese login again"}
-//         }
-//       })
-//     } else {
-//       return response;
-//     }
-
-//   }, (error)=>
-//     {console.log(error); return error})
+let isRun = false;
 instance.interceptors.response.use(async (response) => {
   const data = response.data;
-  if (data.status === 200) return response;
-
-  if (data.status === 401) {
-    console.log("log to 401");
+  if (data.status !=401) return response;
+  if (data.status === 401 && !isRun) {
+    if(!isRun) isRun = true;
     const auth = authStore();
     const { accessToken } = storeToRefs(auth);
     try {
@@ -68,14 +40,10 @@ instance.interceptors.response.use(async (response) => {
         return Promise.reject({ status: 401, message: "Access token cannot refresh anymore! Please login again" });
       }
     } catch (error) {
-      console.log(error);
       return Promise.reject(error);
     }
-  } else {
-    return response;
   }
 }, (error) => {
-  console.log(error);
   return Promise.reject(error);
 });
 export default instance;

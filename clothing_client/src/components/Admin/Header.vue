@@ -2,7 +2,7 @@
     <div class="admin-header">
     <div class="admin-header-container container">
         <div class="admin-brand-name">
-        <span>ÁNH DƯƠNG STORE</span>
+        <Link to="/"><span>ÁNH DƯƠNG STORE</span></Link>
         </div>
         <div class="admin-quick-action">
             <div class="home-link">
@@ -35,6 +35,13 @@
                 <span>Nhân viên</span>
             </Link>
             </div>
+            <div class="other">
+            <Link :to="{name:'admin-banner'}" v-bind="$attrs" exact-active-class="active" inactive-class="inactive" class="d-flex flex-column justify-content-center align-items-center">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"></circle><circle cx="19" cy="12" r="1"></circle><circle cx="5" cy="12" r="1"></circle></svg>
+                <span>Khác</span>
+            </Link>
+            </div>
+
         </div>
         <div class="admin-notice-bar">
             <div class="admin-account">

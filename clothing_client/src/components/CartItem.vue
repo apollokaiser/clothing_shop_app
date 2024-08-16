@@ -85,12 +85,13 @@ const activePromotion = computed(() => {
 })
 const price = computed(() => {
     let giaTien = thisPiece.value.giaTien;
+    console.log(giaTien);
     let tamTinh = giaTien * thisCartItem.value.quantity;
     let price = tamTinh;
     if (activePromotion.value) {
         price = price - thisPromotion.value.giamTien - (thisPromotion.value.phanTramGiam / 100) * price;
+        props.item.discount = tamTinh - price;
     }
-    props.item.discount = tamTinh - price;
     return price;
 })
 const originPrice = computed(() => {
@@ -125,7 +126,7 @@ const removeCartItem = () => {
 }
 const hasSize = computed(() => {
     if (thisPiece.value)
-        return thisPiece.value.kichThuocs[0] != "NONE";
+        return thisPiece.value.kichThuocs[0].maKichThuoc != "NONE";
     return false;
 })
 const disabledPiece = computed(()=>{

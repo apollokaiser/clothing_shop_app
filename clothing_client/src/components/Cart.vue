@@ -10,26 +10,69 @@ import { authStore } from "@/stores/user.store";
 import { usePromotionStore } from "@/stores/promotion.store";
 import { storeToRefs } from "pinia";
 import convertToVND from "@/utils/convertVND";
-import { getPromotionCode, preparedOrder } from "@/data.function/getData";
+import { canceledOrder, getPromotionCode, preparedOrder } from "@/data.function/getData";
 import { shortCurrency } from "@/utils/util.function";
 import Swal from "sweetalert2";
+import { useRouter } from "vue-router";
 
 const cart = useCartStore();
 const auth = authStore();
-const { cartItems, totalPrice } = storeToRefs(cart);
-const { isLoggedIn, loginRequest } = storeToRefs(auth);
+const { cartItems, totalPrice,preOrder } = storeToRefs(cart);
+const { isLoggedIn, loginRequest, user } = storeToRefs(auth);
 const khuyenMai = usePromotionStore();
+const router = useRouter()
 const { myPromotion, promotionCode, totalDiscount, paymentPromotion } = storeToRefs(khuyenMai);
 const requestPending = reactive({
   getCode: false,
   prepared_order: false,
 });
+const props = defineProps({
+  uid:{
+    type: String,
+    required: true,
+  }, 
+  slug:{
+    type: String,
+    required: true,
+  }
+})
 const hasCart = ref(false);
 onBeforeMount(() => {
+  if(cartItems.value.length ==0 && isLoggedIn.value) cart.getCartInstance(user.value.uid);
   if (cartItems.value.length == 0) cart.loadCartInstance();
 });
 onMounted(() => {
   hasCart.value = cart.cartItems.length > 0 ? true : false;
+  // if(preOrder.value.identity) {
+  // (async()=>{
+  //   const response = await Swal.fire({
+  //     title:"Cảnh báo",
+  //     text:"Đang có 1 giao dịch đươc thực hiện. Nếu không phải bạn, vui lòng hủy giao dịch ! Tiếp tục thực hiện ?",
+  //     icon: "warning",
+  //     showDenyButton: true,
+  //     showCancelButton: true,
+  //     denyButtonText: "Trở lại",
+  //     confirmButtonText: "Đồng ý",
+  //     cancelButtonText: "Hủy ngay",
+  //     allowOutsideClick:false,
+  //     allowEscapeKey:false,
+  //     allowEnterKey:false,
+  //     focusDeny:true,
+  //   })
+  //   if(response.isConfirmed){
+  //     router.push({name:"order-confirm", params:{uid:value, slug:convertToSlug(user.value.name)}})
+  //   } else if(response.isDenied) {
+  //     router.back();
+  //   }
+  //   else if(response.isDismissed) {
+  //     const result = await canceledOrder();
+  //     if(result) {
+  //       cart.getCartInstance(user.value.uid);
+       
+  //     }
+  //   }
+  // })()
+  // }
 });
 watch(
   cartItems,
@@ -109,12 +152,10 @@ const openOrder = () => {
     })()
     return;
   }
-  Swal.showLoading();
-  preparedOrder(cartItems.value).then(res => {
-    Swal.hideLoading();
-    if (res) {
-      let myModal = new bootstrap.Modal(document.getElementById('order'), { keyboard: false })
-      myModal.show();
+  preOrder.value = JSON.parse(JSON.stringify({identity: user.value.uid, carts: cartItems.value}))
+  preparedOrder(preOrder.value).then(res => {
+    if (res==true) {
+      router.push({name:"order-confirm", params:{uid:user.value.uid, slug:props.slug}})
     } else {
       (async () => {
         const { value: submit } = await Swal.fire({
@@ -287,7 +328,6 @@ const openOrder = () => {
       </div>
     </div>
     <!--end modal-->
-    <Order v-if="isLoggedIn"/>
   </div>
 </template>
 <style scoped>

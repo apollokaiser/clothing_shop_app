@@ -1,12 +1,15 @@
 <script setup>
 import { computed, onBeforeMount, reactive, ref, watch } from 'vue';
 import { getOrderDetail } from '@/data.function/getData';
-import { completedOrder, addDeposit as insertDeposit } from '@/data.function/postData';
+import { completedOrder, addDeposit as insertDeposit, updateTheChan } from '@/data.function/postData';
 import { useRouter } from 'vue-router';
 
 import Swal from 'sweetalert2';
 import convertToVND from '@/utils/convertVND';
+import { Toast } from '@/utils/notification';
 const router = useRouter()
+const addTheChan = ref(false);
+const theChanValue = ref(500000);
 const props = defineProps({
     id: {
         type: String,
@@ -18,7 +21,8 @@ const deposit = reactive({
     ngayThu: Date.now() / 1000,
     maDonThue: props.id,
     trangThai: "SUCCESS",
-    payment: "DIRECT"
+    payment: "DIRECT",
+    theChan: 500000
 })
 const orderDetail = ref({});
 onBeforeMount(() => {
@@ -92,6 +96,7 @@ const addDeposit = () => {
 }
 const overDay = computed(()=>{
     let diff = (Date.now() - new Date(orderDetail.value.ngayNhan * 1000))/(1000 * 60 * 60 * 24);
+    if(diff.toFixed(0) <= 3) return 0;
     return diff.toFixed(0);
 })
 const phuThu = computed(()=>{
@@ -101,7 +106,6 @@ const total = computed(()=>{
     return convertToVND(orderDetail.value.tongThue - orderDetail.value.datCoc.soTien + (overDay.value * 0.3 * orderDetail.value.tongThue));
 })
 const exportOrder = ()=>{
-    console.log(orderDetail.value.maDonThue);
     let phieuHoaTra = {
         id:props.id,
         phuThu:(overDay.value * 0.3 * orderDetail.value.tongThue).toFixed(0),
@@ -127,6 +131,26 @@ const exportOrder = ()=>{
         }
     })
 }
+const addTheChanValue = () =>{
+    updateTheChan(props.id, theChanValue.value).then(res=>{
+        addTheChan.value = false;
+        if(res) {
+            Toast.fire({
+                type:'success',
+                title: 'Thêm thế chân thành công!',
+                showConfirmButton: false,
+                timer: 1500
+            })
+        } else {
+            Toast.fire({
+                type: 'error',
+                title: 'Thêm thế chân thất bại!',
+                showConfirmButton: false,
+                timer: 1500
+            })
+        }
+    })
+}
 </script>
 <template>
     <section class="h-100">
@@ -147,6 +171,8 @@ const exportOrder = ()=>{
                                 </p>
                                 <p class="small text-muted mb-1">Địa chỉ nhận : <b>{{ orderDetail.diaChiNguoiNhan }}</b>
                                 </p>
+                                <p class="small text-muted mb-1">Ngày nhận : <b>{{ new Date(orderDetail.ngayNhan * 1000).toLocaleString()  }}</b>
+                                </p>
                                 <p class="small text-muted mb-1">
                                     Trạng thái :
                                     <b :class="{
@@ -154,7 +180,7 @@ const exportOrder = ()=>{
                                         'text-warning': orderDetail.trangThai?.maTrangThai == 1,
                                         'text-danger': orderDetail.trangThai?.maTrangThai != 1 && orderDetail.trangThai?.maTrangThai != 2
                                     }">
-                                        {{ orderDetail.trangThai.trangThai }}
+                                        {{ orderDetail.trangThai?.trangThai }}
                                     </b>
                                 </p>
                                 <p v-if="orderDetail.datCoc" class="small text-muted mb-1">
@@ -180,7 +206,7 @@ const exportOrder = ()=>{
                                         </div>
                                         <div
                                             class="col-md-2 text-center d-flex justify-content-center align-items-center">
-                                            <p class="text-muted mb-0 small">Kích cỡ: {{ item.maKichThuoc || 'Không' }}
+                                            <p class="text-muted mb-0 small">Kích cỡ: {{ item.outfitSizeId.maKichThuoc || 'Không' }}
                                             </p>
                                         </div>
                                         <div
@@ -205,14 +231,19 @@ const exportOrder = ()=>{
                             </div>
                             <div class="d-flex justify-content-between pt-2">
                                 <p class="text-muted mb-0"></p>
-                                <p class="text-muted mb-0"><button v-if="orderDetail.trangThai.maTrangThai == 1"
+                                <p class="text-muted mb-0"><button v-if="orderDetail.trangThai?.maTrangThai == 1"
                                         data-bs-toggle="modal" data-bs-target="#deposit" class="deposit-btn">Đặt
                                         cọc</button></p>
                             </div>
                             <div class="d-flex justify-content-between pt-2">
                                 <p class="text-muted mb-0"></p>
-                                <p class="text-muted mb-0"><button v-if="orderDetail.trangThai.maTrangThai == 3"
+                                <p class="text-muted mb-0"><button v-if="orderDetail.trangThai?.maTrangThai == 3 && new Date() /1000 >= orderDetail.ngayNhan"
                                         data-bs-toggle="modal" data-bs-target="#exportOrder" class="deposit-btn">Xuất phiếu</button></p>
+                            </div>
+                            <div class="d-flex justify-content-between pt-2">
+                                <p class="text-muted mb-0"></p>
+                                <p class="text-muted mb-0"><button v-if="!orderDetail.theChan && new Date() /1000 >= orderDetail.ngayNhan"
+                                    @click="addTheChan = true" class="deposit-btn">Nhận thế chân</button></p>
                             </div>
                         </div>
                         <div class="card-footer border-0 px-4 py-5"
@@ -256,6 +287,10 @@ const exportOrder = ()=>{
                                 </select>
                             </p>
                         </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <p class="small mb-0">Tiền thế chân</p>
+                            <p class="small mb-0">500.000 đ </p>
+                        </div>
 
                         <div class="d-flex justify-content-between pb-1">
                             <p class="small">Hạn mức cọc</p>
@@ -276,7 +311,7 @@ const exportOrder = ()=>{
                 </div>
             </div>
         </div>
-        <div v-if="orderDetail.datCoc" class="modal fade" id="exportOrder" tabindex="-1" aria-labelledby="exportOrderLabel" aria-hidden="true">
+        <div v-if="orderDetail.datCoc && new Date() /1000 >= orderDetail.ngayNhan" class="modal fade" id="exportOrder" tabindex="-1" aria-labelledby="exportOrderLabel" aria-hidden="true">
             <div class="modal-dialog">
                 <div class="modal-content">
                     <div class="modal-header border-bottom-0">
@@ -328,6 +363,21 @@ const exportOrder = ()=>{
                     </div>
                 </div>
             </div>
+            <v-dialog v-model="addTheChan" width="auto">
+      <v-card max-width="400" prepend-icon="mdi-update" title="Thêm tiền thế chân">
+        <v-card-text>
+         <div class="d-flex justify-content-between align-items-center">
+            <div>Tiền thế chân</div>
+            <div>500.000đ</div>
+         </div>
+        </v-card-text>
+        <template v-slot:actions>
+          <v-btn class="ms-auto" text="Thoát" @click="addTheChan = false"></v-btn>
+          <v-btn class="ms-auto" text="Đồng ý" @click="addTheChanValue"></v-btn>
+
+        </template>
+      </v-card>
+    </v-dialog>
         </div>
     </section>
 </template>
